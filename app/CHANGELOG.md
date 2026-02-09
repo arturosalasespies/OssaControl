@@ -14,8 +14,13 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 - ✅ Subido proyecto a GitHub
 - ✅ Añadidos compañeros al repositorio
 
-### [Alejandra] - Fecha: ___
-- 
+### [Alejandra] - Fecha: 09/02/2026
+- ✅ Variables actualizadas del sdk (compile y target), manifest y build.gradle para que no 
+explote la app al abrir
+- ✅ MainActivity editado para llamar a la AppRoot
+- ✅ AppRoot creado
+- ✅ Nuevas carpetas ui + ui.screens creadas
+- ✅ Añadidas todas las screens para el login: HomeScreen, LoginScreen y SignUpScreen
 
 ### [Alberto] - Fecha: ___
 - 
