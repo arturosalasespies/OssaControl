@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
 import com.ossacontrol.app.ui.screens.*
 import com.ossacontrol.app.viewmodel.AuthViewModel
@@ -14,32 +16,28 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun AppRoot2() {
-    //El NavController es el objeto que controla hacia dónde va el usuario
+    // El navController nos sirve para saber en qué pantalla estamos y a cuál ir.
     val navController = rememberNavController()
 
-    //Instanciamos el AuthViewModel para gestionar la lógica de roles desde Firestore
+    // ViewModel para gestionar quién está logueado y qué permisos tiene.
     val authViewModel: AuthViewModel = viewModel()
 
-    //Obtenemos el rol actual del usuario desde el ViewModel ("admin", "alumno" o null)
+    // Vigilamos el rol del usuario (admin o alumno) para saber a dónde mandarlo.
     val userRole by authViewModel.userRole
 
-    //Decidimos la ruta de inicio: si hay sesión iniciada, vamos a "Home", si no, a "Login"
+    // Si ya hay una sesión abierta en Firebase, vamos directo al selector, si no, al login.
     val start = if (FirebaseAuth.getInstance().currentUser != null) "home_selector" else "login"
 
-    //El NavHost define el mapa de navegación de toda la aplicación
+    // El NavHost es el mapa de todas las pantallas de nuestra app.
     NavHost(navController = navController, startDestination = start) {
 
         // --- RUTA: LOGIN ---
         composable("login") {
             LoginScreen(
-                onLoginSuccess = {
-                    // Al loguearse con éxito, llamamos a Firestore para saber qué rol tiene el usuario
-                    authViewModel.checkUserRole()
-                },
-                onGoToSignUp = { navController.navigate("signup") }
+                onLoginSuccess = { authViewModel.checkUserRole() }, // Si entra bien, miramos su rol.
+                onGoToSignUp = { navController.navigate("signup") } // Ir al registro.
             )
-
-            // Efecto lanzado: cuando detectamos que el rol ha sido cargado, saltamos de pantalla
+            // Si el rol cambia a admin o alumno, saltamos a su pantalla correspondiente.
             LaunchedEffect(userRole) {
                 if (userRole == "admin") {
                     navController.navigate("admin_home") { popUpTo("login") { inclusive = true } }
@@ -52,22 +50,14 @@ fun AppRoot2() {
         // --- RUTA: REGISTRO ---
         composable("signup") {
             SignUpScreen(
-                onSignUpSuccess = {
-                    // Al registrarse, por defecto los mandamos a chequear rol (será alumno)
-                    authViewModel.checkUserRole()
-                },
-                onBackToLogin = { navController.popBackStack() }
+                onSignUpSuccess = { authViewModel.checkUserRole() }, // Tras registrarse, miramos rol.
+                onBackToLogin = { navController.popBackStack() } // Volver atrás.
             )
         }
 
-        // --- RUTA INTERMEDIA: SELECTOR (Para usuarios que ya tienen sesión abierta) ---
+        // --- RUTA SELECTOR (Carga de rol) ---
         composable("home_selector") {
-            // Si el usuario ya estaba logueado al abrir la app, disparamos la carga del rol
-            LaunchedEffect(Unit) {
-                authViewModel.checkUserRole()
-            }
-
-            //aquí redirigimos al cambiar userRole
+            LaunchedEffect(Unit) { authViewModel.checkUserRole() }
             LaunchedEffect(userRole) {
                 if (userRole == "admin") {
                     navController.navigate("admin_home") { popUpTo("home_selector") { inclusive = true } }
@@ -81,35 +71,46 @@ fun AppRoot2() {
         composable("admin_home") {
             AdminHomeScreen(
                 onLogout = {
-                    // Limpiamos sesión en Firebase y volvemos a Login
                     authViewModel.logout()
                     navController.navigate("login") { popUpTo(0) }
                 },
                 onNavigateToAddStudent = {
-                    navController.navigate("add_student")
+                    navController.navigate("add_student") // Vamos a la pantalla de crear.
+                },
+                onNavigateToDetail = { email ->
+                    // Vamos a la pantalla de detalle pasando el email del alumno como argumento.
+                    navController.navigate("student_detail/$email")
                 }
             )
         }
 
-        // --- RUTA: AÑADIR ALUMNO ---
+        // --- RUTA: AÑADIR ALUMNO (Crear nuevo) ---
         composable("add_student") {
             val adminViewModel: AdminViewModel = viewModel()
             AddStudentScreen(
                 onStudentAdded = { nombre, email ->
-                    // Llamamos a la función de guardar que modificamos en el ViewModel
                     adminViewModel.registrarAlumno(
                         nombre = nombre,
                         email = email,
-                        onSuccess = {
-                            navController.popBackStack()
-                        },
-                        onError = { errorMsg ->
-                            // Por ahora solo imprimimos el error, podrías mostrar un Toast
-                            println(errorMsg)
-                        }
+                        onSuccess = { navController.popBackStack() }, // Si se crea, volvemos a la lista.
+                        onError = { println(it) }
                     )
                 },
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- RUTA: DETALLE DEL ALUMNO (Gestionar uno existente) ---
+        // Definimos que esta ruta espera un argumento llamado "email".
+        composable(
+            route = "student_detail/{email}",
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            // Extraemos el email del alumno que viene en la URL de la navegación.
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            StudentDetailScreen(
+                studentEmail = email,
+                onBack = { navController.popBackStack() } // Volver a la lista de administración.
             )
         }
 

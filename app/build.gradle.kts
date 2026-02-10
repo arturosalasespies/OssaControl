@@ -65,4 +65,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // Librería para generar los códigos QR en Compose
+    implementation("com.github.alexzh:qrcode-compose:1.1.0")
 }

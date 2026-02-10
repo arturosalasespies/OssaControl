@@ -7,27 +7,61 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.ossacontrol.app.model.User
 
 @Composable
 fun SignUpScreen(
-    onSignUpSuccess: () -> Unit, // Login correcto
-    onBackToLogin: () -> Unit // Ir a registro
+    onSignUpSuccess: () -> Unit,
+    onBackToLogin: () -> Unit
 ) {
+    // Estados para guardar lo que escribe el usuario
+    var nombre by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Crear cuenta con email y password
+    // Función principal para registrar al usuario
     fun signUp() {
         error = null
         loading = true
-        FirebaseAuth.getInstance()
-            .createUserWithEmailAndPassword(email.trim(), pass)
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseFirestore.getInstance()
+
+        // 1. Creamos el usuario en Authentication (Email y Pass)
+        auth.createUserWithEmailAndPassword(email.trim(), pass)
             .addOnCompleteListener { task ->
-                loading = false
-                if (task.isSuccessful) onSignUpSuccess()
-                else error = task.exception?.localizedMessage ?: "Error al crear cuenta"
+                if (task.isSuccessful) {
+                    val userId = task.result?.user?.uid ?: ""
+                    
+                    // 2. Definimos el rol: si el email es este, será admin. Si no, alumno.
+                    // CAMBIA "admin@ossa.com" por el email que tú quieras usar.
+                    val miRol = if (email.trim().lowercase() == "admin@ossa.com") "admin" else "alumno"
+
+                    // 3. Creamos el objeto usuario para guardarlo en la base de datos (Firestore)
+                    val nuevoUsuario = User(
+                        id = userId,
+                        nombre = nombre,
+                        email = email.trim(),
+                        rol = miRol
+                    )
+
+                    // 4. Guardamos los datos en la colección "users" usando su UID
+                    db.collection("users").document(userId)
+                        .set(nuevoUsuario)
+                        .addOnSuccessListener {
+                            loading = false
+                            onSignUpSuccess() // Vamos a la Home correspondiente
+                        }
+                        .addOnFailureListener {
+                            loading = false
+                            error = "Error al guardar en base de datos"
+                        }
+                } else {
+                    loading = false
+                    error = task.exception?.localizedMessage ?: "Error al crear cuenta"
+                }
             }
     }
 
@@ -39,10 +73,21 @@ fun SignUpScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Crear cuenta", style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(16.dp))
+            Text("Regístrate en OSSA Control", style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(24.dp))
 
-            // Campo email
+            // Campo para el nombre (nuevo)
+            OutlinedTextField(
+                value = nombre,
+                onValueChange = { nombre = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Nombre completo") },
+                singleLine = true
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Campo para el email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -53,36 +98,34 @@ fun SignUpScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Campo password
+            // Campo para la contraseña
             OutlinedTextField(
                 value = pass,
                 onValueChange = { pass = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Contraseña (mín. 6)") },
+                label = { Text("Contraseña") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
 
-            // Si hay error, lo mostramos
             if (error != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(error!!, color = MaterialTheme.colorScheme.error)
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Botón crear cuenta
+            // Botón para crear cuenta
             Button(
                 onClick = { signUp() },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !loading && email.isNotBlank() && pass.length >= 6
+                enabled = !loading && nombre.isNotBlank() && email.isNotBlank() && pass.length >= 6
             ) {
-                Text(if (loading) "Creando..." else "Crear cuenta")
+                Text(if (loading) "Creando perfil..." else "Registrarse")
             }
 
-            // Botón para volver a Login
             TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
-                Text("Volver")
+                Text("¿Ya tienes cuenta? Entra aquí")
             }
         }
     }
