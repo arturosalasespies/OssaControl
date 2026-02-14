@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.ossacontrol.app"
-    compileSdk = 34 // Cambiado a 35, ya que 36 es experimental/futuro
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.ossacontrol.app"
@@ -66,6 +66,10 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
-    // Librería para generar los códigos QR en Compose
-    implementation("com.github.alexzh:qrcode-compose:1.1.0")
+    // ===== CAMBIADO: Quitamos la librería QR rota de alexzh =====
+    // Ahora usamos ZXing
+    implementation("com.google.zxing:core:3.5.3")
+
+    // AÑADIDO: Iconos extendidos (necesario para Icons.Default.QrCode)
+    implementation("androidx.compose.material:material-icons-extended")
 }

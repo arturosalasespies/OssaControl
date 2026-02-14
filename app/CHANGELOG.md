@@ -15,22 +15,40 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 - ✅ Añadidos compañeros al repositorio
 
 ### [Alejandra] - Fecha: 09/02/2026
-- ✅ Variables actualizadas del sdk (compile y target), manifest y build.gradle para que no 
-explote la app al abrir
+- ✅ Variables actualizadas del sdk (compile y target), manifest y build.gradle para que no
+  explote la app al abrir
 - ✅ MainActivity editado para llamar a la AppRoot
 - ✅ AppRoot creado
 - ✅ Nuevas carpetas ui + ui.screens creadas
 - ✅ Añadidas todas las screens para el login: HomeScreen, LoginScreen y SignUpScreen
 
-### [Alberto] - Fecha: ___
-- 
+### [Alberto] - Fecha: 10-11/02/2026
+- ⚠️ PENDIENTE: Alberto debe documentar sus cambios aquí. Sus commits incluyen:
+- ✅ Implementada arquitectura MVVM (AuthViewModel + AdminViewModel)
+- ✅ Sistema de gestión de roles (admin/alumno)
+- ✅ AppRoot2.kt con navegación basada en roles
+- ✅ AdminHomeScreen con listado de alumnos en tiempo real
+- ✅ AddStudentScreen para dar de alta alumnos
+- ✅ StudentDetailScreen con detalle del alumno
+- ✅ StudentHomeScreen para perfil del alumno
+- ✅ Sistema de asistencia con simulación de escaneo QR
 
 ---
 
-## Semana 2 - Login y listado
+## Semana 2 - Corrección de errores y mejoras
 
-### [Arturo] - Fecha: ___
-- 
+### [Arturo] - Fecha: 14/02/2026
+- ✅ Configurado repositorio JitPack en settings.gradle.kts (necesario para dependencias externas)
+- ✅ Sustituida librería QR rota (alexzh:qrcode-compose) por ZXing de Google (com.google.zxing:core:3.5.3)
+- ✅ Añadida dependencia material-icons-extended (necesaria para el icono QrCode)
+- ✅ StudentDetailScreen.kt reescrito completo:
+    - ✅ Generación de QR funcional con ZXing (función generarCodigoQR)
+    - ✅ Selector de cinturones ampliado de 3 a 5 (Blanco, Azul, Morado, Marrón, Negro)
+    - ✅ Cada cinturón muestra su color real en el selector
+    - ✅ Añadido selector de stripes/grados (0-4) por cinturón
+    - ✅ Guardado de cinturón y grados en Firebase
+- ✅ Documentación y comentarios añadidos en todos los archivos modificados
+- ✅ App probada y funcionando en emulador
 
 ### [Alejandra] - Fecha: ___
 - 
@@ -99,5 +117,18 @@ explote la app al abrir
 3. Usa ✅ para tareas completadas
 4. Usa ⏳ para tareas en progreso
 5. Haz commit de este archivo junto con tus cambios
+```
 
+---
 
+**Después de pegarlo, haz otro commit:**
+```
+git add .
+```
+```
+git commit -m "Docs: Actualizado CHANGELOG con los cambios de la sesion del 14/02 - Arturo"
+```
+
+Y si quieres subirlo a GitHub:
+```
+git push
