@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
 
 // --- IMPORT DE ZXING (la librería QR de Google) ---
 // BarcodeFormat define el tipo de código (QR, barras, etc.)
@@ -119,7 +120,12 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
 
     // ViewModel que nos conecta con Firebase para leer y escribir datos
     val viewModel: AdminViewModel = viewModel()
-
+    // AÑADIDO: Cargamos los alumnos desde Firebase al entrar en esta pantalla
+    // Sin esto, la lista estaría vacía porque cada pantalla tiene su propia
+    // copia del ViewModel (como una pizarra independiente por cada sala)
+    LaunchedEffect(Unit) {
+        viewModel.obtenerAlumnos()
+    }
     // Buscamos al alumno por email dentro de la lista cargada
     val alumno = viewModel.usuarios.value.find { it.email == studentEmail }
 
