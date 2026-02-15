@@ -49,6 +49,7 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
     - ✅ Guardado de cinturón y grados en Firebase
 - ✅ Documentación y comentarios añadidos en todos los archivos modificados
 - ✅ App probada y funcionando en emulador
+- - ✅ Corregida carga de datos en StudentDetailScreen (añadido LaunchedEffect para obtener alumnos)
 
 ### [Alejandra] - Fecha: ___
 - 
