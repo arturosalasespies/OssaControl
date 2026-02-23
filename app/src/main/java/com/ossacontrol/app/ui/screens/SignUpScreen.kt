@@ -1,8 +1,11 @@
 package com.ossacontrol.app.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SportsMartialArts // Icono de artes marciales para el logo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -22,24 +25,21 @@ fun SignUpScreen(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Función principal para registrar al usuario
+    // Función principal para registrar al usuario en Firebase y Firestore
     fun signUp() {
         error = null
         loading = true
         val auth = FirebaseAuth.getInstance()
         val db = FirebaseFirestore.getInstance()
 
-        // 1. Creamos el usuario en Authentication (Email y Pass)
         auth.createUserWithEmailAndPassword(email.trim(), pass)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val userId = task.result?.user?.uid ?: ""
                     
-                    // 2. Definimos el rol: si el email es este, será admin. Si no, alumno.
-                    // CAMBIA "admin@ossa.com" por el email que tú quieras usar.
+                    // Lógica de roles: si es este email, será admin. Si no, alumno.
                     val miRol = if (email.trim().lowercase() == "admin@ossa.com") "admin" else "alumno"
 
-                    // 3. Creamos el objeto usuario para guardarlo en la base de datos (Firestore)
                     val nuevoUsuario = User(
                         id = userId,
                         nombre = nombre,
@@ -47,16 +47,15 @@ fun SignUpScreen(
                         rol = miRol
                     )
 
-                    // 4. Guardamos los datos en la colección "users" usando su UID
                     db.collection("users").document(userId)
                         .set(nuevoUsuario)
                         .addOnSuccessListener {
                             loading = false
-                            onSignUpSuccess() // Vamos a la Home correspondiente
+                            onSignUpSuccess()
                         }
                         .addOnFailureListener {
                             loading = false
-                            error = "Error al guardar en base de datos"
+                            error = "Error al guardar perfil"
                         }
                 } else {
                     loading = false
@@ -69,61 +68,83 @@ fun SignUpScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(32.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.Center
+            // Centramos todo para que sea coherente con el Login
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Regístrate en OSSA Control", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(24.dp))
+            // 1. Icono representativo (Logo temporal)
+            Icon(
+                imageVector = Icons.Default.SportsMartialArts,
+                contentDescription = "Logo",
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
 
-            // Campo para el nombre (nuevo)
+            Spacer(Modifier.height(16.dp))
+
+            // 2. Títulos
+            Text("NUEVA CUENTA", style = MaterialTheme.typography.headlineMedium)
+            Text("Únete a la academia", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+
+            Spacer(Modifier.height(32.dp))
+
+            // 3. Campo de Nombre
             OutlinedTextField(
                 value = nombre,
                 onValueChange = { nombre = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Nombre completo") },
-                singleLine = true
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Campo para el email
+            // 4. Campo de Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Email") },
-                singleLine = true
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Campo para la contraseña
+            // 5. Campo de Contraseña
             OutlinedTextField(
                 value = pass,
                 onValueChange = { pass = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Contraseña") },
+                label = { Text("Contraseña (mín. 6)") },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation()
+                visualTransformation = PasswordVisualTransformation(),
+                shape = MaterialTheme.shapes.medium
             )
 
             if (error != null) {
                 Spacer(Modifier.height(8.dp))
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(32.dp))
 
-            // Botón para crear cuenta
+            // 6. Botón Registrarse
             Button(
                 onClick = { signUp() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !loading && nombre.isNotBlank() && email.isNotBlank() && pass.length >= 6
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                enabled = !loading && nombre.isNotBlank() && email.isNotBlank() && pass.length >= 6,
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(if (loading) "Creando perfil..." else "Registrarse")
+                Text(if (loading) "CREANDO PERFIL..." else "REGISTRARSE")
             }
 
+            Spacer(Modifier.height(16.dp))
+
+            // Botón para volver atrás
             TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
                 Text("¿Ya tienes cuenta? Entra aquí")
             }

@@ -4,10 +4,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ossacontrol.app.model.User
@@ -18,46 +23,67 @@ import com.ossacontrol.app.viewmodel.AdminViewModel
 fun AdminHomeScreen(
     onLogout: () -> Unit, 
     onNavigateToAddStudent: () -> Unit,
-    onNavigateToDetail: (String) -> Unit // Añadimos esto para poder ir al detalle usando el email del alumno
+    onNavigateToDetail: (String) -> Unit
 ) {
+    // Instanciamos el ViewModel que gestiona la lista de alumnos
     val viewModel: AdminViewModel = viewModel()
     val alumnos = viewModel.usuarios.value
 
-    // Al entrar en la pantalla, cargamos los datos de Firebase
+    // Cargamos los datos de Firebase al entrar
     LaunchedEffect(Unit) {
         viewModel.obtenerAlumnos()
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Gestión de Academia") })
+            // Barra superior con diseño limpio
+            TopAppBar(
+                title = { Text("GESTIÓN ACADEMIA", fontWeight = FontWeight.Bold) },
+                actions = {
+                    // Botón de logout en la esquina superior
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.Logout, contentDescription = "Salir")
+                    }
+                }
+            )
         },
         floatingActionButton = {
-            // Botón flotante para ir a la pantalla de añadir alumno
-            FloatingActionButton(onClick = onNavigateToAddStudent) {
-                Text("+", style = MaterialTheme.typography.headlineSmall)
+            // Botón flotante para añadir alumnos con el color primario (Negro/Blanco)
+            FloatingActionButton(
+                onClick = onNavigateToAddStudent,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Añadir")
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Título que muestra cuántos alumnos hay cargados
-            Text(
-                "Listado de Alumnos (${alumnos.size})",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            // Lista eficiente de alumnos
-            LazyColumn {
-                items(alumnos) { alumno ->
-                    // Ahora la tarjeta es clicable y nos lleva al detalle del alumno
-                    CardAlumno(alumno = alumno, onClick = { onNavigateToDetail(alumno.email) })
-                }
+            // Cabecera con el total de alumnos
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(
+                    text = "TOTAL ALUMNOS: ${alumnos.size}",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-            // Botón para salir de la cuenta
-            Button(onClick = onLogout, modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-                Text("Cerrar Sesión")
+            // Lista de alumnos con el nuevo diseño de tarjeta
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(alumnos) { alumno ->
+                    CardAlumno(
+                        alumno = alumno, 
+                        onClick = { onNavigateToDetail(alumno.email) }
+                    )
+                }
             }
         }
     }
@@ -65,20 +91,47 @@ fun AdminHomeScreen(
 
 @Composable
 fun CardAlumno(alumno: User, onClick: () -> Unit) {
+    // Tarjeta del alumno con bordes suaves y elevación ligera
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() }, // Hacemos que toda la tarjeta reaccione al toque
-        elevation = CardDefaults.cardElevation(4.dp)
+            .clickable { onClick() },
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp)) {
-            Column {
-                // Mostramos nombre, cinturón y clases acumuladas
-                Text(text = alumno.nombre, style = MaterialTheme.typography.bodyLarge)
-                Text(text = "Cinturón: ${alumno.cinturon}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "Clases: ${alumno.clasesAsistidas}", color = MaterialTheme.colorScheme.primary)
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                // Nombre del alumno destacado
+                Text(
+                    text = alumno.nombre.uppercase(), 
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // Info secundaria (Cinturón y clases)
+                Row {
+                    Text(
+                        text = "Cinturón: ${alumno.cinturon}", 
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Clases: ${alumno.clasesAsistidas}", 
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
+            // Indicador visual de que es clicable
+            Text("Ver >", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
