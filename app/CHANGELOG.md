@@ -54,21 +54,19 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 - 
 
 ### [Alberto] - Fecha: 23/02/2026___
-- 
-  ✅ Refactorización de Navegación: Consolidado AppRoot y AppRoot2 en un único archivo AppRoot.kt para eliminar código duplicado y evitar conflictos.
-  ✅ Centralización de Rutas: Creado objeto Routes en AppRoot.kt para gestionar los nombres de las rutas de forma segura.
-  ✅ Identidad Visual Corporativa (Theming):
-  ✅ Definida paleta de colores "Black & White" en theme/Color.kt para un estilo profesional de artes marciales.
-  ✅ Configurado theme/Theme.kt para usar los nuevos colores en modo claro y oscuro, y desactivado el color dinámico de Android para mantener la identidad de la marca.
-  ✅ Rediseño Completo de la Interfaz de Usuario:
-  ✅ Login y Registro: Añadido icono temporal, mejorada la tipografía y aplicados bordes redondeados para un look moderno.
-  ✅ Perfil del Alumno: Rediseñada la StudentHomeScreen con tarjetas visuales para el cinturón y las asistencias, mejorando la jerarquía de la información.
-  ✅ Panel de Admin: Rediseñada la AdminHomeScreen con tarjetas de alumno más limpias y una cabecera con el total de alumnos.
-  ✅ Detalle y Añadir Alumno: Unificado el diseño de StudentDetailScreen y AddStudentScreen con el resto de la app.
-  ✅ Solución de Errores de Compilación:
-  ✅ Eliminada por completo la librería de QR (alexzh:qrcode-compose) que causaba errores de Gradle y bloqueaba la ejecución de la app.
-  ✅ Limpiados los archivos build.gradle.kts y StudentDetailScreen.kt de cualquier referencia a la librería eliminada para asegurar que el proyecto compile correctamente.
-
+- ✅ Refactorización de Navegación: Consolidado AppRoot y AppRoot2 en un único archivo AppRoot.kt para eliminar código duplicado y evitar conflictos.
+- ✅ Centralización de Rutas: Creado objeto Routes en AppRoot.kt para gestionar los nombres de las rutas de forma segura.
+- ✅ Identidad Visual Corporativa (Theming):
+- ✅ Definida paleta de colores "Black & White" en theme/Color.kt para un estilo profesional de artes marciales.
+- ✅ Configurado theme/Theme.kt para usar los nuevos colores en modo claro y oscuro, y desactivado el color dinámico de Android para mantener la identidad de la marca.
+- ✅ Rediseño Completo de la Interfaz de Usuario:
+- ✅ Login y Registro: Añadido icono temporal, mejorada la tipografía y aplicados bordes redondeados para un look moderno.
+- ✅ Perfil del Alumno: Rediseñada la StudentHomeScreen con tarjetas visuales para el cinturón y las asistencias, mejorando la jerarquía de la información.
+- ✅ Panel de Admin: Rediseñada la AdminHomeScreen con tarjetas de alumno más limpias y una cabecera con el total de alumnos.
+- ✅ Detalle y Añadir Alumno: Unificado el diseño de StudentDetailScreen y AddStudentScreen con el resto de la app.
+- ✅Solución de Errores de Compilación:
+- ✅ Eliminada por completo la librería de QR (alexzh:qrcode-compose) que causaba errores de Gradle y bloqueaba la ejecución de la app.
+- ✅ Limpiados los archivos build.gradle.kts y StudentDetailScreen.kt de cualquier referencia a la librería eliminada para asegurar que el proyecto compile correctamente.
 ---
 
 ## Semana 3 - Perfil del alumno
