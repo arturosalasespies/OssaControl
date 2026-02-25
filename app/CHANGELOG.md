@@ -50,8 +50,15 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 - ✅ App probada y funcionando en emulador
 - - ✅ Corregida carga de datos en StudentDetailScreen (añadido LaunchedEffect para obtener alumnos)
 
-### [Alejandra] - Fecha: ___
-- 
+### [Alejandra] - Fecha: 25/02/2026
+- ✅ R03F01T01: Subcolección de asistencias. Guarda a qué día y a qué hora vino el alumno además del total.
+- ✅ Mostrar última asistencia con fecha y hora al alumno en StudentDetailScreen
+- ✅ El admin puede visualizar la última vez que ha asistido el alumno en StudentHomeScreen
+- ✅ Asistencia.kt creada para llevar un registro de la asistencia de alumnos
+- ✅ AdminViewModel y StudentViewModel updateados para implementar la asistencia
+- ✅ Historial de las 10 últimas asistencias creado
+- ✅ Función para formatear el timestamp añadida
+- ✅ Scroll interno añadido a las asistencias
 
 ### [Alberto] - Fecha: 23/02/2026___
 - ✅ Refactorización de Navegación: Consolidado AppRoot y AppRoot2 en un único archivo AppRoot.kt para eliminar código duplicado y evitar conflictos.

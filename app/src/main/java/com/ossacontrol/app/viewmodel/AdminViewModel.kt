@@ -15,6 +15,7 @@ package com.ossacontrol.app.viewmodel
  *   - Arturo (con Claude Code) (25/02): Añadida lógica de alumnos inactivos
  *     (no han asistido en los últimos 30 días). registrarAsistencia()
  *     ahora también actualiza el campo ultimaAsistencia en Firestore.
+ *   - Alejandra (25/02): añadida función para registrar asistencia
  * ============================================
  */
 
@@ -24,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.ossacontrol.app.model.User
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 
 class AdminViewModel : ViewModel() {
     // Instancia de la base de datos de Firestore
@@ -171,24 +174,37 @@ class AdminViewModel : ViewModel() {
      * es más eficiente (una sola escritura en Firestore en vez de dos).
      */
     fun registrarAsistencia(alumnoId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        Log.d("AdminViewModel", "registrarAsistencia → doc ID: '$alumnoId'")
+        val db = FirebaseFirestore.getInstance()
+        val adminUid = FirebaseAuth.getInstance().currentUser?.uid
 
-        // Actualizamos clasesAsistidas y ultimaAsistencia en una sola operación
-        val actualizaciones = mapOf(
-            "clasesAsistidas" to com.google.firebase.firestore.FieldValue.increment(1),
-            "ultimaAsistencia" to System.currentTimeMillis()
+        // Documento de la asistencia (auto-id)
+        val asistencia = hashMapOf(
+            "timestamp" to FieldValue.serverTimestamp(), // Hora del servidor
+            "createdBy" to adminUid
         )
 
+        // 1) Guardar evento en subcolección
         db.collection("users")
-            .document(alumnoId)          // CORREGIDO: usa el ID real del documento
-            .update(actualizaciones)
+            .document(alumnoId)
+            .collection("asistencias")
+            .add(asistencia)
             .addOnSuccessListener {
-                Log.d("AdminViewModel", "Asistencia registrada OK para: $alumnoId")
-                onSuccess()
+                // 2) Mantener contador + ultimaAsistencia como resumen
+                db.collection("users")
+                    .document(alumnoId)
+                    .update(
+                        mapOf(
+                            "clasesAsistidas" to FieldValue.increment(1),
+                            "ultimaAsistencia" to System.currentTimeMillis()
+                        )
+                    )
+                    .addOnSuccessListener { onSuccess() }
+                    .addOnFailureListener { e ->
+                        onError("Asistencia guardada, pero no se pudo actualizar el contador: ${e.localizedMessage}")
+                    }
             }
-            .addOnFailureListener { exception ->
-                Log.e("AdminViewModel", "Error asistencia para '$alumnoId': ${exception.message}")
-                onError("Error al marcar asistencia: ${exception.localizedMessage}")
+            .addOnFailureListener { e ->
+                onError("Error al guardar asistencia: ${e.localizedMessage}")
             }
     }
 
