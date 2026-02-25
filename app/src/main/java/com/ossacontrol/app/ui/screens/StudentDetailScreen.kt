@@ -261,7 +261,7 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                         // Botón para simular registro de asistencia (+1 clase)
                         Button(
                             onClick = {
-                                viewModel.registrarAsistencia(alumno.email, {}, {})
+                                viewModel.registrarAsistencia(alumno.id, {}, {})
                             },
                             modifier = Modifier.padding(top = 8.dp),
                             shape = MaterialTheme.shapes.small
