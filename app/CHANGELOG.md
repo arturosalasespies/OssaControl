@@ -69,55 +69,101 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 - ✅ Limpiados los archivos build.gradle.kts y StudentDetailScreen.kt de cualquier referencia a la librería eliminada para asegurar que el proyecto compile correctamente.
 ---
 
-## Semana 3 - Perfil del alumno
+## Sesión extra - Semana 3 (25/02/2026)
 
-### [Arturo] - Fecha: ___
-- 
+### [Arturo] - Fecha: 25/02/2026 (con Claude Code como asistente)
 
-### [Alejandra] - Fecha: ___
-- 
+#### Corrección de bugs críticos
+- ✅ **Bug de IDs en Firestore corregido**: Los documentos se creaban con UID (SignUpScreen) o con email (AdminViewModel) como ID. Todas las operaciones de escritura fallaban silenciosamente porque intentaban acceder al documento por email, aunque algunos tenían UID como ID.
+  - `obtenerAlumnos()`: ahora hace `copy(id = doc.id)` para capturar el ID real del documento
+  - `actualizarAlumno()`: usa `document(alumnoFinal.id)` en vez de `document(user.email)`
+  - `registrarAsistencia()`: recibe el ID real del documento, no el email
+  - `StudentDetailScreen`: pasa `alumno.id` (ID real) en vez de `alumno.email`
+- ✅ Añadidos logs de diagnóstico en AdminViewModel (Logcat tag: "AdminViewModel")
 
-### [Alberto] - Fecha: ___
-- 
+#### Nuevas funcionalidades (requisito del profesor José Manuel)
+
+- ✅ **R04 - Activos vs Inactivos**: Detección automática de alumnos inactivos
+  - Añadido campo `ultimaAsistencia: Long` al modelo `User.kt`
+  - `registrarAsistencia()` actualiza `ultimaAsistencia` en cada registro
+  - `calcularInactivos()` en AdminViewModel: marca como inactivo a quien lleve +30 días sin venir
+  - Nueva pantalla `InactivosScreen.kt`: lista de inactivos con días sin venir
+  - Tarjeta de acceso rápido en AdminHomeScreen con badge de contador rojo
+
+- ✅ **R05 - Estadísticas básicas**: Pantalla de estadísticas generales
+  - Nueva pantalla `EstadisticasScreen.kt` con 3 secciones:
+    · Resumen: total de alumnos, activos vs inactivos (con porcentaje)
+    · Distribución por cinturón con barras de progreso visuales (colores reales BJJ)
+    · Top 5 alumnos con más asistencias
+  - Tarjeta de acceso rápido en AdminHomeScreen
+
+- ✅ **R06 - Buscador de alumnos**: Filtro en tiempo real en AdminHomeScreen
+  - Campo de búsqueda encima de la lista
+  - Filtra por nombre, ignorando mayúsculas/minúsculas
+  - Muestra contador de resultados cuando hay búsqueda activa
+
+- ✅ **R07 - Mejora de StudentHomeScreen**: Perfil del alumno enriquecido
+  - Barra visual con el color real del cinturón (igual que en StudentDetailScreen)
+  - Stripes/grados visibles en la barra del cinturón
+  - Fecha desde cuándo tiene ese cinturón (en formato DD/MM/YYYY)
+  - Estado ACTIVO/INACTIVO con días desde la última asistencia
+
+#### Candidatos a Graduación (implementado anteriormente, documentado ahora)
+- ✅ **R03 - Candidatos a Graduación**: Implementado por Arturo (25/02)
+  - Nueva pantalla `CandidatosScreen.kt`
+  - Reglas IBJJF simplificadas en `AdminViewModel.kt`:
+    · Blanco → Azul: 6 meses + 80 clases
+    · Azul → Morado: 24 meses + 200 clases
+    · Morado → Marrón: 18 meses + 180 clases
+    · Marrón → Negro: 12 meses + 150 clases
+  - Añadido campo `fechaInicioCinturon: Long` al modelo `User.kt`
+  - Se resetea automáticamente al guardar cambio de cinturón
+  - Tarjeta de acceso rápido en AdminHomeScreen
+
+#### Navegación
+- ✅ `AppRoot.kt` unificado (legacy `AppRoot2.kt` eliminado)
+- ✅ Objeto `Routes` con todas las rutas centralizadas
+- ✅ Nuevas rutas: `candidatos`, `inactivos`, `estadisticas`
+- ✅ `AdminHomeScreen` actualizado con los 3 nuevos parámetros de navegación
 
 ---
 
 ## Semana 4 - Registro de asistencia
 
 ### [Arturo] - Fecha: ___
-- 
+-
 
 ### [Alejandra] - Fecha: ___
-- 
+-
 
 ### [Alberto] - Fecha: ___
-- 
+-
 
 ---
 
 ## Semana 5 - Testing y bugs
 
 ### [Arturo] - Fecha: ___
-- 
+-
 
 ### [Alejandra] - Fecha: ___
-- 
+-
 
 ### [Alberto] - Fecha: ___
-- 
+-
 
 ---
 
 ## Semana 6 - Documentación y presentación
 
 ### [Arturo] - Fecha: ___
-- 
+-
 
 ### [Alejandra] - Fecha: ___
-- 
+-
 
 ### [Alberto] - Fecha: ___
-- 
+-
 
 ---
 

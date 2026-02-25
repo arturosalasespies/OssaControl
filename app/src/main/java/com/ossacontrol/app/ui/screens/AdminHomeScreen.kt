@@ -9,6 +9,10 @@ package com.ossacontrol.app.ui.screens
  *   - Alberto (11/02): Versión inicial con listado y FAB
  *   - Alberto (25/02): Refactor visual (uppercase, iconos, diseño)
  *   - Arturo  (25/02): Añadido botón de Candidatos a Graduación
+ *   - Arturo (con Claude Code) (25/02):
+ *     · Añadido buscador de alumnos en tiempo real (filtra por nombre)
+ *     · Añadida tarjeta de acceso a Inactivos
+ *     · Añadida tarjeta de acceso a Estadísticas
  * ============================================
  */
 
@@ -18,12 +22,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,16 +43,32 @@ fun AdminHomeScreen(
     onLogout: () -> Unit,
     onNavigateToAddStudent: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
-    onNavigateToCandidatos: () -> Unit          // AÑADIDO: Navegación a candidatos
+    onNavigateToCandidatos: () -> Unit,
+    onNavigateToInactivos: () -> Unit,       // AÑADIDO: acceso a la pantalla de inactivos
+    onNavigateToEstadisticas: () -> Unit     // AÑADIDO: acceso a la pantalla de estadísticas
 ) {
     val viewModel: AdminViewModel = viewModel()
     val alumnos = viewModel.usuarios.value
 
-    // AÑADIDO: Escuchamos también los candidatos para mostrar el contador
+    // Escuchamos candidatos e inactivos para mostrar sus contadores en las tarjetas
     val candidatos by viewModel.candidatos
+    val inactivos by viewModel.inactivos
+
+    // --- Estado del buscador ---
+    // busqueda guarda el texto que el admin está escribiendo en el campo de búsqueda
+    var busqueda by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.obtenerAlumnos()
+    }
+
+    // Filtramos la lista de alumnos según el texto del buscador.
+    // Si busqueda está vacío, mostramos todos. Si no, filtramos por nombre.
+    // ignoreCase = true hace que "juan" encuentre "JUAN" o "Juan"
+    val alumnosFiltrados = if (busqueda.isBlank()) {
+        alumnos
+    } else {
+        alumnos.filter { it.nombre.contains(busqueda, ignoreCase = true) }
     }
 
     Scaffold(
@@ -67,12 +88,13 @@ fun AdminHomeScreen(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir")
+                Icon(Icons.Default.Add, contentDescription = "Añadir alumno")
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Cabecera con total de alumnos
+
+            // ===== CABECERA: Total de alumnos =====
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceVariant
@@ -85,66 +107,146 @@ fun AdminHomeScreen(
                 )
             }
 
-            // ===== AÑADIDO: Botón de Candidatos a Graduación =====
-            // Este botón lleva a la pantalla donde se ven los alumnos
-            // que cumplen requisitos IBJJF para subir de cinturón.
-            Card(
+            // ===== TARJETA: Candidatos a Graduación =====
+            TarjetaAccesoRapido(
+                icono = { Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                titulo = "CANDIDATOS A GRADUACIÓN",
+                descripcion = "Alumnos que cumplen requisitos IBJJF",
+                contador = candidatos.size,
+                onClick = onNavigateToCandidatos
+            )
+
+            // ===== TARJETA: Alumnos Inactivos =====
+            // El color del contador cambia a rojo si hay inactivos
+            TarjetaAccesoRapido(
+                icono = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                titulo = "ALUMNOS INACTIVOS",
+                descripcion = "Sin asistir en los últimos ${AdminViewModel.DIAS_INACTIVIDAD} días",
+                contador = inactivos.size,
+                colorContador = if (inactivos.isNotEmpty()) MaterialTheme.colorScheme.error else null,
+                onClick = onNavigateToInactivos
+            )
+
+            // ===== TARJETA: Estadísticas =====
+            TarjetaAccesoRapido(
+                icono = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                titulo = "ESTADÍSTICAS",
+                descripcion = "Distribución, asistencias y top alumnos",
+                contador = null,   // Las estadísticas no tienen un contador específico
+                onClick = onNavigateToEstadisticas
+            )
+
+            // ===== BUSCADOR DE ALUMNOS =====
+            // Campo de texto para filtrar la lista en tiempo real
+            OutlinedTextField(
+                value = busqueda,
+                onValueChange = { busqueda = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clickable { onNavigateToCandidatos() },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                label = { Text("Buscar alumno por nombre") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
+            )
+
+            // Si el buscador está activo, mostramos cuántos resultados hay
+            if (busqueda.isNotBlank()) {
+                Text(
+                    text = "${alumnosFiltrados.size} resultado(s) para \"$busqueda\"",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
                 )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = "Candidatos",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "CANDIDATOS A GRADUACIÓN",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Alumnos que cumplen requisitos IBJJF",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                    // Muestra el número de candidatos como badge
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ) {
-                        Text(
-                            text = "${candidatos.size}",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
 
-            // Lista de alumnos
+            // ===== LISTA DE ALUMNOS =====
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(alumnos) { alumno ->
+                // Mostramos la lista filtrada (todos o solo los que coinciden con la búsqueda)
+                items(alumnosFiltrados) { alumno ->
                     CardAlumno(
                         alumno = alumno,
                         onClick = { onNavigateToDetail(alumno.email) }
+                    )
+                }
+
+                // Si la búsqueda no encuentra resultados, mostramos un mensaje
+                if (alumnosFiltrados.isEmpty() && busqueda.isNotBlank()) {
+                    item {
+                        Text(
+                            text = "No hay alumnos con ese nombre",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * TarjetaAccesoRapido — Componente reutilizable para los accesos rápidos del admin.
+ * Muestra un icono, título, descripción y un badge con el contador.
+ * Si contador = null, no muestra el badge.
+ */
+@Composable
+private fun TarjetaAccesoRapido(
+    icono: @Composable () -> Unit,
+    titulo: String,
+    descripcion: String,
+    contador: Int?,
+    colorContador: androidx.compose.ui.graphics.Color? = null,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icono de la sección
+            icono()
+            Spacer(modifier = Modifier.width(12.dp))
+            // Título y descripción
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            // Badge con el contador (si aplica)
+            if (contador != null) {
+                Badge(
+                    containerColor = colorContador ?: MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Text(
+                        text = "$contador",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -152,6 +254,9 @@ fun AdminHomeScreen(
     }
 }
 
+/**
+ * CardAlumno — Tarjeta individual en la lista de alumnos.
+ */
 @Composable
 fun CardAlumno(alumno: User, onClick: () -> Unit) {
     Card(

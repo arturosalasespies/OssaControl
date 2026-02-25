@@ -9,6 +9,7 @@ package com.ossacontrol.app.ui
  *   - Alejandra (09/02): Versión inicial (login, registro, home)
  *   - Alberto  (25/02): Refactor con objeto Routes, roles, navegación dinámica
  *   - Arturo   (25/02): Añadida ruta de Candidatos a Graduación
+ *   - Arturo (con Claude Code) (25/02): Añadidas rutas de Inactivos y Estadísticas
  * ============================================
  */
 
@@ -35,7 +36,9 @@ object Routes {
     const val StudentHome = "student_home"
     const val AddStudent = "add_student"
     const val StudentDetail = "student_detail"
-    const val Candidatos = "candidatos"          // AÑADIDO: Ruta para candidatos a graduación
+    const val Candidatos = "candidatos"        // Alumnos que cumplen requisitos IBJJF
+    const val Inactivos = "inactivos"          // AÑADIDO: Alumnos sin asistir en 30 días
+    const val Estadisticas = "estadisticas"    // AÑADIDO: Estadísticas generales de la academia
 }
 
 @Composable
@@ -44,7 +47,7 @@ fun AppRoot() {
     val authViewModel: AuthViewModel = viewModel()
     val userRole by authViewModel.userRole
 
-    // Vigilante global: redirige según el rol
+    // Vigilante global: redirige según el rol del usuario
     LaunchedEffect(userRole) {
         when (userRole) {
             "admin" -> navController.navigate(Routes.AdminHome) { popUpTo(0) }
@@ -86,8 +89,9 @@ fun AppRoot() {
                 },
                 onNavigateToAddStudent = { navController.navigate(Routes.AddStudent) },
                 onNavigateToDetail = { email -> navController.navigate("${Routes.StudentDetail}/$email") },
-                // AÑADIDO: Navegación a la pantalla de candidatos a graduación
-                onNavigateToCandidatos = { navController.navigate(Routes.Candidatos) }
+                onNavigateToCandidatos = { navController.navigate(Routes.Candidatos) },
+                onNavigateToInactivos = { navController.navigate(Routes.Inactivos) },
+                onNavigateToEstadisticas = { navController.navigate(Routes.Estadisticas) }
             )
         }
 
@@ -108,6 +112,7 @@ fun AppRoot() {
         }
 
         // --- RUTA: DETALLE DEL ALUMNO ---
+        // Ruta dinámica que recibe el email del alumno como parámetro
         composable(
             route = "${Routes.StudentDetail}/{email}",
             arguments = listOf(navArgument("email") { type = NavType.StringType })
@@ -119,10 +124,26 @@ fun AppRoot() {
             )
         }
 
-        // --- RUTA: CANDIDATOS A GRADUACIÓN (AÑADIDO) ---
-        // Pantalla que muestra los alumnos que cumplen requisitos IBJJF para subir de cinturón
+        // --- RUTA: CANDIDATOS A GRADUACIÓN ---
+        // Pantalla con los alumnos que cumplen requisitos IBJJF para subir de cinturón
         composable(Routes.Candidatos) {
             CandidatosScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- RUTA: ALUMNOS INACTIVOS (AÑADIDO) ---
+        // Pantalla con los alumnos que llevan más de 30 días sin asistir
+        composable(Routes.Inactivos) {
+            InactivosScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- RUTA: ESTADÍSTICAS (AÑADIDO) ---
+        // Pantalla con estadísticas generales de la academia
+        composable(Routes.Estadisticas) {
+            EstadisticasScreen(
                 onBack = { navController.popBackStack() }
             )
         }

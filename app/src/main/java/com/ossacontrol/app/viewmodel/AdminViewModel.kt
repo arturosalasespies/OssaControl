@@ -12,6 +12,9 @@ package com.ossacontrol.app.viewmodel
  *     Añadida actualización de fechaInicioCinturon al cambiar cinturón.
  *     Corregido bug de IDs: ahora usa doc.id real de Firebase
  *     en vez de email para actualizar y registrar asistencia.
+ *   - Arturo (con Claude Code) (25/02): Añadida lógica de alumnos inactivos
+ *     (no han asistido en los últimos 30 días). registrarAsistencia()
+ *     ahora también actualiza el campo ultimaAsistencia en Firestore.
  * ============================================
  */
 
@@ -19,7 +22,6 @@ import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.ossacontrol.app.model.User
 
@@ -35,10 +37,17 @@ class AdminViewModel : ViewModel() {
     private val _candidatos = mutableStateOf<List<CandidatoInfo>>(emptyList())
     val candidatos: State<List<CandidatoInfo>> = _candidatos
 
+    // --- Lista observable de alumnos inactivos (sin asistir en los últimos DIAS_INACTIVIDAD) ---
+    private val _inactivos = mutableStateOf<List<InactivoInfo>>(emptyList())
+    val inactivos: State<List<InactivoInfo>> = _inactivos
+
     // ============================================
     // REGLAS DE GRADUACIÓN (basadas en IBJJF)
     // ============================================
     companion object {
+        // Días sin asistir para considerar a un alumno inactivo (configurable)
+        const val DIAS_INACTIVIDAD = 30
+
         val REGLAS_GRADUACION = mapOf(
             "Blanco" to RequisitosGraduacion(
                 mesesMinimos = 6,
@@ -82,11 +91,15 @@ class AdminViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
                 val lista = snapshot?.documents?.mapNotNull { doc ->
+                    // copy(id = doc.id) sobreescribe el campo "id" con el ID real del documento.
+                    // Esto es clave: funciona sin importar si el doc se creó con UID o con email.
                     doc.toObject(User::class.java)?.copy(id = doc.id)
                 } ?: emptyList()
                 _usuarios.value = lista
 
+                // Cada vez que llegan datos nuevos, recalculamos candidatos e inactivos
                 calcularCandidatos(lista)
+                calcularInactivos(lista)
             }
     }
 
@@ -103,7 +116,8 @@ class AdminViewModel : ViewModel() {
             cinturon = "Blanco",
             grados = 0,
             clasesAsistidas = 0,
-            fechaInicioCinturon = System.currentTimeMillis()
+            fechaInicioCinturon = System.currentTimeMillis(),
+            ultimaAsistencia = 0L   // Sin asistencias aún
         )
 
         db.collection("users")
@@ -123,6 +137,8 @@ class AdminViewModel : ViewModel() {
     fun actualizarAlumno(user: User, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val alumnoActual = _usuarios.value.find { it.email == user.email }
 
+        // Si el cinturón cambió, reiniciamos la fecha de inicio y los stripes a 0.
+        // Igual que en la vida real: cinturón nuevo = contador a cero.
         val alumnoFinal = if (alumnoActual != null && alumnoActual.cinturon != user.cinturon) {
             user.copy(
                 fechaInicioCinturon = System.currentTimeMillis(),
@@ -147,15 +163,25 @@ class AdminViewModel : ViewModel() {
     }
 
     /**
-     * registrarAsistencia() — Incrementa el contador de clases en +1.
-     * CORREGIDO: Recibe el ID real del documento de Firebase,
-     * no el email. Así funciona tanto si el doc se creó con UID como con email.
+     * registrarAsistencia() — Incrementa el contador de clases en +1
+     * y actualiza ultimaAsistencia con la fecha y hora actuales.
+     *
+     * CORREGIDO: Recibe el ID real del documento de Firebase, no el email.
+     * ACTUALIZADO: Ahora actualiza dos campos a la vez con un Map, lo que
+     * es más eficiente (una sola escritura en Firestore en vez de dos).
      */
     fun registrarAsistencia(alumnoId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         Log.d("AdminViewModel", "registrarAsistencia → doc ID: '$alumnoId'")
+
+        // Actualizamos clasesAsistidas y ultimaAsistencia en una sola operación
+        val actualizaciones = mapOf(
+            "clasesAsistidas" to com.google.firebase.firestore.FieldValue.increment(1),
+            "ultimaAsistencia" to System.currentTimeMillis()
+        )
+
         db.collection("users")
             .document(alumnoId)          // CORREGIDO: usa el ID real del documento
-            .update("clasesAsistidas", FieldValue.increment(1))
+            .update(actualizaciones)
             .addOnSuccessListener {
                 Log.d("AdminViewModel", "Asistencia registrada OK para: $alumnoId")
                 onSuccess()
@@ -172,20 +198,22 @@ class AdminViewModel : ViewModel() {
 
     /**
      * calcularCandidatos() — Recorre todos los alumnos y comprueba si cumplen
-     * los requisitos para subir de cinturón.
+     * los requisitos de tiempo y clases para subir de cinturón (reglas IBJJF).
      */
     private fun calcularCandidatos(alumnos: List<User>) {
         val ahora = System.currentTimeMillis()
         val listaCandidatos = mutableListOf<CandidatoInfo>()
 
         for (alumno in alumnos) {
+            // Si el cinturón es Negro, no hay siguiente cinturón
             val reglas = REGLAS_GRADUACION[alumno.cinturon] ?: continue
 
+            // Calculamos los meses que lleva con este cinturón
             val mesesConCinturon = if (alumno.fechaInicioCinturon > 0) {
                 val diferencia = ahora - alumno.fechaInicioCinturon
                 (diferencia / (1000L * 60 * 60 * 24 * 30)).toInt()
             } else {
-                0
+                0   // Sin fecha registrada = 0 meses (alumnos antiguos)
             }
 
             val cumpleTiempo = mesesConCinturon >= reglas.mesesMinimos
@@ -206,22 +234,75 @@ class AdminViewModel : ViewModel() {
 
         _candidatos.value = listaCandidatos
     }
+
+    // ============================================
+    // LÓGICA DE ALUMNOS INACTIVOS
+    // ============================================
+
+    /**
+     * calcularInactivos() — Detecta qué alumnos no han asistido en los últimos
+     * DIAS_INACTIVIDAD días (por defecto 30).
+     *
+     * Casos posibles:
+     *  - ultimaAsistencia == 0L → nunca ha asistido → diasSinAsistir = -1 (valor especial)
+     *  - ultimaAsistencia > 0L → calculamos los días reales
+     *
+     * Se llama automáticamente desde obtenerAlumnos() cada vez que Firestore
+     * actualiza la lista.
+     */
+    private fun calcularInactivos(alumnos: List<User>) {
+        val ahora = System.currentTimeMillis()
+        // Convertimos DIAS_INACTIVIDAD de días a milisegundos para comparar
+        val umbralMs = DIAS_INACTIVIDAD * 24L * 60 * 60 * 1000
+
+        val listaInactivos = mutableListOf<InactivoInfo>()
+
+        for (alumno in alumnos) {
+            if (alumno.ultimaAsistencia == 0L) {
+                // Nunca ha asistido desde que se registró (o campo no existe aún)
+                listaInactivos.add(
+                    InactivoInfo(alumno = alumno, diasSinAsistir = -1)
+                )
+            } else {
+                val tiempoSinAsistir = ahora - alumno.ultimaAsistencia
+                val dias = (tiempoSinAsistir / (1000L * 60 * 60 * 24)).toInt()
+                if (tiempoSinAsistir >= umbralMs) {
+                    listaInactivos.add(
+                        InactivoInfo(alumno = alumno, diasSinAsistir = dias)
+                    )
+                }
+            }
+        }
+
+        _inactivos.value = listaInactivos
+    }
 }
 
 // ============================================
 // CLASES DE DATOS AUXILIARES
 // ============================================
 
+/** Requisitos mínimos IBJJF para pasar al siguiente cinturón */
 data class RequisitosGraduacion(
     val mesesMinimos: Int,
     val clasesMinimas: Int,
     val siguienteCinturon: String
 )
 
+/** Alumno que cumple los requisitos para graduarse */
 data class CandidatoInfo(
     val alumno: User,
     val siguienteCinturon: String,
     val mesesConCinturon: Int,
     val clasesRequeridas: Int,
     val mesesRequeridos: Int
+)
+
+/**
+ * Alumno inactivo (sin asistir en los últimos DIAS_INACTIVIDAD días).
+ * diasSinAsistir = -1 significa que nunca ha asistido.
+ */
+data class InactivoInfo(
+    val alumno: User,
+    val diasSinAsistir: Int    // -1 = nunca ha asistido
 )
