@@ -19,6 +19,10 @@ package com.ossacontrol.app.ui.screens
  *   Esas funciones están definidas en StudentDetailScreen.kt, en el mismo package
  *   (com.ossacontrol.app.ui.screens). En Kotlin, las funciones de nivel de paquete
  *   en el mismo paquete son accesibles desde este archivo sin necesidad de importar.
+ *
+ * NOTA: El parámetro email fue eliminado (Limpieza - Arturo 25/02/2026) porque
+ *   no se usaba en el cuerpo de la función. Los datos se cargan vía StudentViewModel,
+ *   que obtiene el UID del usuario desde FirebaseAuth internamente.
  */
 
 import java.text.SimpleDateFormat
@@ -44,7 +48,7 @@ import com.ossacontrol.app.viewmodel.StudentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudentHomeScreen(email: String, onLogout: () -> Unit) {
+fun StudentHomeScreen(onLogout: () -> Unit) {
 
     // ViewModel que carga los datos del alumno logueado desde Firestore
     val viewModel: StudentViewModel = viewModel()

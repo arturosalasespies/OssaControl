@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 // --- IMPORTS DEL PROYECTO ---
 import com.ossacontrol.app.viewmodel.AdminViewModel
@@ -98,6 +99,10 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
     var cinturon by remember { mutableStateOf(alumno?.cinturon ?: "Blanco") }
     var grados by remember { mutableStateOf(alumno?.grados ?: 0) }
 
+    // Limpieza - Arturo 25/02/2026: Snackbar para mostrar errores de Firebase al usuario
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     // Cuando los datos del alumno llegan de Firebase, actualizamos el borrador
     LaunchedEffect(alumno) {
         if (alumno != null) {
@@ -120,7 +125,8 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                 }
                 // QR eliminado por indicación del profesor José Manuel (futuro)
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (alumno != null) {
             Column(
@@ -258,10 +264,19 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                             fontWeight = FontWeight.Bold
                         )
 
-                        // Botón para simular registro de asistencia (+1 clase)
+                        // Botón para registrar asistencia (+1 clase)
+                        // Limpieza - Arturo 25/02/2026: error visible via Snackbar
                         Button(
                             onClick = {
-                                viewModel.registrarAsistencia(alumno.id, {}, {})
+                                viewModel.registrarAsistencia(
+                                    alumnoId = alumno.id,
+                                    onSuccess = {},
+                                    onError = { mensaje ->
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Error: $mensaje")
+                                        }
+                                    }
+                                )
                             },
                             modifier = Modifier.padding(top = 8.dp),
                             shape = MaterialTheme.shapes.small
@@ -276,14 +291,23 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
 
                 // ===== SECCIÓN 6: Botón guardar cambios =====
                 // Crea una copia del alumno con cinturón y grados nuevos
-                // y lo envía a Firebase a través del ViewModel
+                // y lo envía a Firebase a través del ViewModel.
+                // Limpieza - Arturo 25/02/2026: error visible via Snackbar
                 Button(
                     onClick = {
                         val alumnoEditado = alumno.copy(
                             cinturon = cinturon,
                             grados = grados
                         )
-                        viewModel.actualizarAlumno(alumnoEditado, { onBack() }, {})
+                        viewModel.actualizarAlumno(
+                            user = alumnoEditado,
+                            onSuccess = { onBack() },
+                            onError = { mensaje ->
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Error al guardar: $mensaje")
+                                }
+                            }
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()

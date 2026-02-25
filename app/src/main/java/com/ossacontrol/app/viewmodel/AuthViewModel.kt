@@ -1,8 +1,8 @@
 package com.ossacontrol.app.viewmodel
 
+// Esto nos sirve para conectar el Login con Firestore para que la app sepa quién es Admin y quién es Alumno.
 
-//Esto nos sirve para conectar el Login con Firestore para que la app sepa quién es Admin y quién es Alumno.
-
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -19,6 +19,7 @@ class AuthViewModel : ViewModel() {
     val userRole: State<String?> = _userRole
 
     // Función para mirar en la base de datos qué rol tiene el usuario logueado
+    // Limpieza - Arturo 25/02/2026: añadido log de error si Firestore falla
     fun checkUserRole() {
         val userId = auth.currentUser?.uid
         if (userId != null) {
@@ -27,7 +28,12 @@ class AuthViewModel : ViewModel() {
                     if (document.exists()) {
                         val rolEncontrado = document.getString("rol")
                         _userRole.value = rolEncontrado
+                    } else {
+                        Log.w("AuthViewModel", "No se encontró documento de usuario para UID: $userId")
                     }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e("AuthViewModel", "Error al obtener rol del usuario: ${exception.message}")
                 }
         }
     }

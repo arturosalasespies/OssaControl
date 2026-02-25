@@ -1,5 +1,6 @@
 package com.ossacontrol.app.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -30,8 +31,9 @@ class StudentViewModel : ViewModel() {
             db.collection("users").document(userId)
                 // Usamos addSnapshotListener para que los datos se refresquen solos si cambian en la nube.
                 .addSnapshotListener { snapshot, error ->
-                    // Si hay un error de conexión, no hacemos nada.
+                    // Limpieza - Arturo 25/02/2026: log de error si Firestore falla
                     if (error != null) {
+                        Log.e("StudentViewModel", "Error al cargar datos del alumno: ${error.message}")
                         return@addSnapshotListener
                     }
                     // Si el documento existe, lo convertimos a nuestro objeto User.

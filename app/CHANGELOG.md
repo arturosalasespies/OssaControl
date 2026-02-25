@@ -128,6 +128,33 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 
 ---
 
+## Sesión extra – Semana 4 (25/02/2026) – Limpieza y mejoras
+
+### [Arturo] - Fecha: 25/02/2026 (con Claude Code como asistente)
+
+#### Limpieza general de código (todos los .kt)
+- ✅ **AuthViewModel.kt**: Añadido `addOnFailureListener` en `checkUserRole()` — ya no falla silenciosamente si Firestore da error
+- ✅ **StudentViewModel.kt**: Añadido `Log.e` en el handler de error de `loadCurrentStudentData()` — los errores de Firestore ahora aparecen en Logcat tag `StudentViewModel`
+- ✅ **AdminHomeScreen.kt**: Añadido `import androidx.compose.ui.graphics.Color`; cambiado `androidx.compose.ui.graphics.Color?` por `Color?` en la firma de `TarjetaAccesoRapido`
+- ✅ **StudentHomeScreen.kt**: Eliminado parámetro `email: String` que se recibía pero nunca se usaba (el ViewModel obtiene el usuario internamente via FirebaseAuth)
+- ✅ **AppRoot.kt**: Eliminado import `AdminViewModel` (ya no se usa ahí). Simplificada la ruta de `AddStudent`: ya no crea un ViewModel local ni gestiona la lógica de registro (esa responsabilidad pasó a AddStudentScreen). Eliminado el `println("Error: $it")` residual.
+
+#### Validaciones en AddStudentScreen
+- ✅ **AddStudentScreen.kt** — reescritura completa:
+  - La pantalla gestiona su propio `AdminViewModel` (patrón del resto de pantallas)
+  - Validación de nombre: mínimo 2 caracteres (error debajo del campo)
+  - Validación de email: debe contener `@` y `.` tras el `@` (error debajo del campo)
+  - Validación de duplicado en Firestore: consulta por campo `email` (`whereEqualTo`) antes de registrar, sin importar si el documento existente usa UID o email como ID
+  - Estado `loading` que deshabilita el botón y muestra "REGISTRANDO..." mientras se procesa
+  - Error general para fallos de red/conexión
+  - Estilo consistente: TopAppBar con "DAR DE ALTA ALUMNO" en bold, botón con `shape = MaterialTheme.shapes.medium`, texto uppercase
+
+#### Manejo de errores en Firebase (callbacks vacíos corregidos)
+- ✅ **StudentDetailScreen.kt**: Los callbacks vacíos `{}` de `registrarAsistencia` y `actualizarAlumno` ahora muestran un Snackbar con el mensaje de error. Añadido `SnackbarHost` al `Scaffold` y `rememberCoroutineScope`.
+
+#### Advertencia sobre código legacy
+- ⚠️ **HomeScreen.kt**: Este archivo existe pero NO se usa en el grafo de navegación (`AppRoot.kt`). Es código legacy de la semana 1 (Alejandra 09/02). No se ha eliminado — se informa al equipo para que decidan si borrarlo en una sesión de limpieza.
+
 ## Semana 4 - Registro de asistencia
 
 ### [Arturo] - Fecha: ___

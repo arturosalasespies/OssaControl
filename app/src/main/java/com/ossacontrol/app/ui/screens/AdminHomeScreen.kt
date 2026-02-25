@@ -31,6 +31,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -203,7 +204,7 @@ private fun TarjetaAccesoRapido(
     titulo: String,
     descripcion: String,
     contador: Int?,
-    colorContador: androidx.compose.ui.graphics.Color? = null,
+    colorContador: Color? = null,   // Limpieza - Arturo 25/02/2026: import añadido arriba
     onClick: () -> Unit
 ) {
     Card(

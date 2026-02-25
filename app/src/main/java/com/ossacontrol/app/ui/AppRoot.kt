@@ -10,6 +10,8 @@ package com.ossacontrol.app.ui
  *   - Alberto  (25/02): Refactor con objeto Routes, roles, navegación dinámica
  *   - Arturo   (25/02): Añadida ruta de Candidatos a Graduación
  *   - Arturo (con Claude Code) (25/02): Añadidas rutas de Inactivos y Estadísticas
+ *   - Arturo (con Claude Code) (25/02): Limpieza — simplificada ruta AddStudent,
+ *     eliminado import AdminViewModel, eliminado parámetro email de StudentHomeScreen
  * ============================================
  */
 
@@ -24,7 +26,6 @@ import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
 import com.ossacontrol.app.ui.screens.*
 import com.ossacontrol.app.viewmodel.AuthViewModel
-import com.ossacontrol.app.viewmodel.AdminViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 // Centralizamos los nombres de las rutas para no cometer errores al escribirlos
@@ -96,17 +97,10 @@ fun AppRoot() {
         }
 
         // --- RUTA: AÑADIR ALUMNO ---
+        // Limpieza - Arturo 25/02/2026: AddStudentScreen gestiona su propio ViewModel,
+        // validaciones y llamada a Firestore. La ruta solo necesita el callback de navegación.
         composable(Routes.AddStudent) {
-            val adminViewModel: AdminViewModel = viewModel()
             AddStudentScreen(
-                onStudentAdded = { nombre, email ->
-                    adminViewModel.registrarAlumno(
-                        nombre = nombre,
-                        email = email,
-                        onSuccess = { navController.popBackStack() },
-                        onError = { println("Error: $it") }
-                    )
-                },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -149,9 +143,9 @@ fun AppRoot() {
         }
 
         // --- RUTA: INICIO ALUMNO ---
+        // Limpieza - Arturo 25/02/2026: eliminado parámetro email (no se usaba en StudentHomeScreen)
         composable(Routes.StudentHome) {
             StudentHomeScreen(
-                email = FirebaseAuth.getInstance().currentUser?.email ?: "Usuario",
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.Login) { popUpTo(0) }
