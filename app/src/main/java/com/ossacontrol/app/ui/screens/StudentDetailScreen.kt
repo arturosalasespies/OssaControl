@@ -15,6 +15,11 @@
  *     · Reset de stripes al cambiar cinturón
  *     · QR eliminado por indicación del profesor (futuro)
  *     · Documentación completa para el equipo
+ *   - Alejandra (25/02): Reestructurado para:
+ *     - Mostrar la última asistencia del alumno con fecha y hora
+ *     - Mostrar historial de las últimas 10 asistencias
+ *     - Formatear timestamp
+ *     - Scroll en asistencia
  * ============================================
  */
 package com.ossacontrol.app.ui.screens
@@ -36,39 +41,47 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+
+// Imports para Firestore + fecha/hora + modelo asistencia
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 // --- IMPORTS DEL PROYECTO ---
 import com.ossacontrol.app.viewmodel.AdminViewModel
+import com.ossacontrol.app.model.Asistencia
 
 // ============================================
 // FUNCIONES AUXILIARES
 // ============================================
 
-/**
- * colorDelCinturon() — Devuelve el color visual real de cada cinturón BJJ.
- * Los colores están basados en los cinturones oficiales IBJJF.
- * Se usa para los chips del selector y la barra visual.
- */
 fun colorDelCinturon(cinturon: String): Color {
     return when (cinturon) {
-        "Blanco" -> Color(0xFFF5F5F5)  // Blanco hueso
-        "Azul"   -> Color(0xFF1565C0)  // Azul oscuro
-        "Morado" -> Color(0xFF6A1B9A)  // Púrpura
-        "Marrón" -> Color(0xFF5D4037)  // Marrón
-        "Negro"  -> Color(0xFF212121)  // Negro
-        else     -> Color.Gray
+        "Blanco" -> Color(0xFFF5F5F5)
+        "Azul" -> Color(0xFF1565C0)
+        "Morado" -> Color(0xFF6A1B9A)
+        "Marrón" -> Color(0xFF5D4037)
+        "Negro" -> Color(0xFF212121)
+        else -> Color.Gray
     }
 }
 
-/**
- * colorTextoDelCinturon() — Devuelve el color del texto para que sea legible
- * sobre el fondo del cinturón. Texto oscuro sobre fondo claro y viceversa.
- */
 fun colorTextoDelCinturon(cinturon: String): Color {
     return when (cinturon) {
         "Blanco" -> Color.Black
-        else     -> Color.White
+        else -> Color.White
     }
+}
+
+// Formatear Timestamp -> "dd/MM/yyyy HH:mm"
+private fun formatTimestamp(ts: Timestamp): String {
+    val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
+    return formato.format(ts.toDate())
 }
 
 // ============================================
@@ -83,8 +96,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
     val viewModel: AdminViewModel = viewModel()
 
     // Cargamos los alumnos desde Firebase al entrar en esta pantalla.
-    // Sin esto, la lista estaría vacía porque cada pantalla tiene su propia
-    // copia del ViewModel (como pizarras independientes por sala).
     LaunchedEffect(Unit) {
         viewModel.obtenerAlumnos()
     }
@@ -94,12 +105,10 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
     val alumno = alumnosData.find { it.email == studentEmail }
 
     // --- Estados locales (borrador del admin) ---
-    // Estos valores se editan en pantalla pero NO se guardan en Firebase
-    // hasta que el admin pulse "GUARDAR CAMBIOS".
     var cinturon by remember { mutableStateOf(alumno?.cinturon ?: "Blanco") }
     var grados by remember { mutableStateOf(alumno?.grados ?: 0) }
 
-    // Limpieza - Arturo 25/02/2026: Snackbar para mostrar errores de Firebase al usuario
+    // Snackbar para mostrar errores de Firebase al usuario
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -111,8 +120,36 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
         }
     }
 
-    // Lista oficial de los 5 cinturones de adulto en BJJ (orden IBJJF)
+    // Lista oficial de cinturones
     val cinturones = listOf("Blanco", "Azul", "Morado", "Marrón", "Negro")
+
+    // Estado para historial de asistencias del alumno (últimas 10)
+    val db = FirebaseFirestore.getInstance()
+    var asistencias by remember { mutableStateOf<List<Asistencia>>(emptyList()) }
+
+    // Escuchamos asistencias cuando ya sabemos el alumno.id
+    LaunchedEffect(alumno?.id) {
+        val alumnoId = alumno?.id ?: return@LaunchedEffect
+
+        db.collection("users")
+            .document(alumnoId)
+            .collection("asistencias")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(10)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    // No spameamos al usuario, pero dejamos log
+                    return@addSnapshotListener
+                }
+
+                val lista = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Asistencia::class.java)
+                } ?: emptyList()
+
+                // serverTimestamp puede venir null un instante
+                asistencias = lista.filter { it.timestamp != null }
+            }
+    }
 
     Scaffold(
         topBar = {
@@ -123,7 +160,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
-                // QR eliminado por indicación del profesor José Manuel (futuro)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -151,8 +187,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // ===== SECCIÓN 2: Barra visual del cinturón =====
-                // Muestra una barra con el color real del cinturón seleccionado,
-                // como ver el cinturón del alumno colgado en la pared de la academia.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -173,7 +207,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // ===== SECCIÓN 3: Selector de cinturones =====
-                // 5 chips con los colores reales de cada cinturón (IBJJF)
                 Text(
                     text = "CAMBIAR CINTURÓN",
                     style = MaterialTheme.typography.labelMedium,
@@ -190,8 +223,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                             selected = cinturon == nombreCinturon,
                             onClick = {
                                 cinturon = nombreCinturon
-                                // Al cambiar de cinturón, reseteamos los grados a 0
-                                // Igual que en la vida real: cinturón nuevo, stripes a cero
                                 grados = 0
                             },
                             label = {
@@ -213,9 +244,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // ===== SECCIÓN 4: Selector de stripes (grados) =====
-                // En BJJ cada cinturón puede tener de 0 a 4 stripes.
-                // Las stripes son marcas en la punta del cinturón que indican progreso.
-                // 4 stripes = candidato potencial a subir de cinturón.
                 Text(
                     text = "STRIPES (GRADOS): $grados",
                     style = MaterialTheme.typography.labelMedium,
@@ -243,7 +271,7 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ===== SECCIÓN 5: Tarjeta de asistencia =====
+                // ===== SECCIÓN 5: Tarjeta de asistencia (total + botón) =====
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -264,13 +292,11 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                             fontWeight = FontWeight.Bold
                         )
 
-                        // Botón para registrar asistencia (+1 clase)
-                        // Limpieza - Arturo 25/02/2026: error visible via Snackbar
                         Button(
                             onClick = {
                                 viewModel.registrarAsistencia(
                                     alumnoId = alumno.id,
-                                    onSuccess = {},
+                                    onSuccess = { /* ok */ },
                                     onError = { mensaje ->
                                         scope.launch {
                                             snackbarHostState.showSnackbar("Error: $mensaje")
@@ -286,13 +312,70 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                     }
                 }
 
+                // Última asistencia (fecha y hora)
+                Spacer(modifier = Modifier.height(16.dp))
+                val ultimaTs = asistencias.firstOrNull()?.timestamp
+                if (ultimaTs != null) {
+                    Text(
+                        text = "Última asistencia: ${formatTimestamp(ultimaTs)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                } else {
+                    Text(
+                        text = "Última asistencia: (sin registros)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                // Historial de asistencias (últimas 10)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "HISTORIAL (ÚLTIMAS ${asistencias.size})",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ===== HISTORIAL DE ASISTENCIAS (SCROLL INTERNO) =====
+                val historyScroll = rememberScrollState()
+
+                if (asistencias.isEmpty()) {
+                    Text(
+                        text = "Aún no hay asistencias registradas.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                } else {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 220.dp)      // Límite visual elegante
+                                .verticalScroll(historyScroll)
+                                .padding(16.dp)
+                        ) {
+                            asistencias.forEachIndexed { index, a ->
+                                val ts = a.timestamp ?: return@forEachIndexed
+
+                                Text(
+                                    text = "• ${formatTimestamp(ts)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+
+                                if (index < asistencias.lastIndex) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Empuja el botón de guardar al fondo de la pantalla
                 Spacer(modifier = Modifier.weight(1f))
 
                 // ===== SECCIÓN 6: Botón guardar cambios =====
-                // Crea una copia del alumno con cinturón y grados nuevos
-                // y lo envía a Firebase a través del ViewModel.
-                // Limpieza - Arturo 25/02/2026: error visible via Snackbar
                 Button(
                     onClick = {
                         val alumnoEditado = alumno.copy(
@@ -318,7 +401,6 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
                 }
             }
         } else {
-            // Mientras carga, mostramos indicador de progreso
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center

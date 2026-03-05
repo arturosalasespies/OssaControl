@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.ossacontrol.app.model.User
+import com.google.firebase.firestore.Query
+import com.ossacontrol.app.model.Asistencia
 
 // Este ViewModel se encarga únicamente de la lógica de la pantalla del Alumno.
 class StudentViewModel : ViewModel() {
@@ -42,5 +44,31 @@ class StudentViewModel : ViewModel() {
                     }
                 }
         }
+    }
+
+    // Estado para historial de asistencias
+    private val _asistencias = mutableStateOf<List<Asistencia>>(emptyList())
+    val asistencias: State<List<Asistencia>> = _asistencias
+
+    fun listenCurrentStudentAsistencias(limit: Long = 10) {
+        val userId = auth.currentUser?.uid ?: return
+
+        db.collection("users")
+            .document(userId)
+            .collection("asistencias")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(limit)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("StudentViewModel", "Error asistencias: ${error.message}")
+                    return@addSnapshotListener
+                }
+                val lista = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Asistencia::class.java)
+                } ?: emptyList()
+
+                // Importante: serverTimestamp puede venir null un instante
+                _asistencias.value = lista.filter { it.timestamp != null }
+            }
     }
 }

@@ -13,6 +13,11 @@ package com.ossacontrol.app.ui.screens
  *     · Mostrar stripes/grados del alumno
  *     · Mostrar fecha desde cuándo tiene ese cinturón
  *     · Mostrar días desde la última asistencia (activo/inactivo)
+ *   - Alejandra (25/02): Reestructurado para:
+ *     - Mostrar la última asistencia del alumno con fecha y hora
+ *     - Mostrar historial de las 10 últimas asistencias
+ *     - Formatear timestamp
+ *     - Scroll en asistencia
  * ============================================
  *
  * NOTA TÉCNICA sobre colorDelCinturon() y colorTextoDelCinturon():
@@ -43,8 +48,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.Timestamp
 import com.ossacontrol.app.viewmodel.AdminViewModel
 import com.ossacontrol.app.viewmodel.StudentViewModel
+import androidx.compose.foundation.layout.heightIn
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,15 +60,18 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
     // ViewModel que carga los datos del alumno logueado desde Firestore
     val viewModel: StudentViewModel = viewModel()
 
-    // Escuchamos los datos del alumno: si cambian, la pantalla se actualiza sola
+    // Datos del alumno
     val alumno by viewModel.studentData
 
-    // Al entrar, pedimos al ViewModel que cargue los datos del alumno actual
+    // Historial de asistencias (últimas 10)
+    val asistencias by viewModel.asistencias
+
+    // Al entrar, cargamos perfil + asistencias
     LaunchedEffect(Unit) {
         viewModel.loadCurrentStudentData()
+        viewModel.listenCurrentStudentAsistencias(10)
     }
 
-    // scrollState para que la pantalla sea desplazable si hay mucho contenido
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -94,9 +104,6 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // ===== SECCIÓN 2: Barra visual del cinturón =====
-                // Muestra el cinturón con su color real, igual que en la pantalla del admin.
-                // colorDelCinturon() y colorTextoDelCinturon() están en StudentDetailScreen.kt,
-                // mismo paquete → accesibles sin importar.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -118,7 +125,6 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
 
                 // ===== SECCIÓN 3: Fecha desde cuándo tiene este cinturón =====
                 val textoCinturon = if (alumno!!.fechaInicioCinturon > 0L) {
-                    // Formateamos la fecha en formato día/mes/año (español)
                     val formato = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
                     "Cinturón desde: ${formato.format(Date(alumno!!.fechaInicioCinturon))}"
                 } else {
@@ -132,7 +138,7 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ===== SECCIÓN 4: Tarjeta de asistencias =====
+                // ===== SECCIÓN 4: Tarjeta de asistencias totales =====
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -151,7 +157,6 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        // El número en grande es lo más visible de la pantalla
                         Text(
                             text = "${alumno!!.clasesAsistidas}",
                             style = MaterialTheme.typography.displayLarge,
@@ -167,9 +172,7 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ===== SECCIÓN 5: Estado de actividad =====
-                // Mostramos cuántos días lleva el alumno sin asistir,
-                // o si está activo (asistió recientemente)
+                // ===== SECCIÓN 5: Estado de actividad (días desde ultimaAsistencia) =====
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -192,7 +195,6 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                             Spacer(modifier = Modifier.height(4.dp))
 
                             if (alumno!!.ultimaAsistencia == 0L) {
-                                // Sin asistencias registradas todavía
                                 Text(
                                     text = "Sin asistencias registradas",
                                     style = MaterialTheme.typography.bodyMedium,
@@ -201,11 +203,11 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                                 )
                             } else {
                                 val ahora = System.currentTimeMillis()
-                                val diasDesdeUltima = ((ahora - alumno!!.ultimaAsistencia) / (1000L * 60 * 60 * 24)).toInt()
+                                val diasDesdeUltima =
+                                    ((ahora - alumno!!.ultimaAsistencia) / (1000L * 60 * 60 * 24)).toInt()
                                 val umbralInactivo = AdminViewModel.DIAS_INACTIVIDAD
 
                                 if (diasDesdeUltima < umbralInactivo) {
-                                    // Activo: ha venido recientemente
                                     Text(
                                         text = "ACTIVO",
                                         style = MaterialTheme.typography.titleMedium,
@@ -218,7 +220,6 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                 } else {
-                                    // Inactivo: lleva demasiado tiempo sin venir
                                     Text(
                                         text = "INACTIVO",
                                         style = MaterialTheme.typography.titleMedium,
@@ -236,7 +237,56 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                     }
                 }
 
-                // Separador antes del botón de logout
+                // última asistencia con fecha/hora exacta (desde subcolección)
+                Spacer(modifier = Modifier.height(16.dp))
+                val ultimaTs: Timestamp? = asistencias.firstOrNull()?.timestamp
+                if (ultimaTs != null) {
+                    Text(
+                        text = "Última asistencia: ${formatTimestamp(ultimaTs)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                // Historial de asistencias
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "HISTORIAL (ÚLTIMAS ${asistencias.size})",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Historial con scroll interno (para no empujar el botón de cerrar sesión)
+                val historyScroll = rememberScrollState()
+
+                if (asistencias.isEmpty()) {
+                    Text(
+                        text = "Aún no hay asistencias registradas.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                } else {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 220.dp)        // El historial no crece más que esto
+                                .verticalScroll(historyScroll) // Scroll solo aquí
+                                .padding(16.dp)
+                        ) {
+                            asistencias.forEachIndexed { index, a ->
+                                val ts = a.timestamp ?: return@forEachIndexed
+                                Text(text = "• ${formatTimestamp(ts)}")
+
+                                if (index < asistencias.lastIndex) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // ===== BOTÓN CERRAR SESIÓN =====
@@ -254,11 +304,16 @@ fun StudentHomeScreen(onLogout: () -> Unit) {
                 }
 
             } else {
-                // Mientras los datos se cargan, mostramos indicador de progreso
                 CircularProgressIndicator(modifier = Modifier.size(50.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Cargando tu perfil...", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
+}
+
+// Convierte Timestamp a "dd/MM/yyyy HH:mm"
+private fun formatTimestamp(ts: Timestamp): String {
+    val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
+    return formato.format(ts.toDate())
 }
