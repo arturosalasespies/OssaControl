@@ -155,6 +155,30 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 #### Advertencia sobre código legacy
 - ⚠️ **HomeScreen.kt**: Este archivo existe pero NO se usa en el grafo de navegación (`AppRoot.kt`). Es código legacy de la semana 1 (Alejandra 09/02). No se ha eliminado — se informa al equipo para que decidan si borrarlo en una sesión de limpieza.
 
+## Sesión extra – Semana 4 (06/03/2026) – Seguridad y corrección de bug de login
+
+### [Arturo] - Fecha: 06/03/2026 (con Claude Code como asistente)
+
+#### Corrección de bug: checkUserRole() fallaba para alumnos creados por el admin
+- ✅ **AuthViewModel.kt** — `checkUserRole()` reescrito con estrategia de doble búsqueda:
+  - Paso 1: busca el documento por UID (funciona para alumnos registrados vía SignUpScreen)
+  - Paso 2 (fallback): si no existe documento con ese UID, busca con `whereEqualTo("email", ...)`
+    para cubrir alumnos creados por el admin, cuyo documento tiene el email como ID en Firestore
+  - Sin este fix, los alumnos creados por el admin no podían entrar a la app (rol nunca se asignaba)
+
+#### Eliminación de dependencia QR (no implementado todavía)
+- ✅ **build.gradle.kts**: Eliminada dependencia `com.google.zxing:core:3.5.3` (sin usar por ahora)
+- ✅ **build.gradle.kts**: Actualizado comentario de `material-icons-extended` — aclara que se usa
+  para los iconos `Logout` y `BarChart` de AdminHomeScreen, no para QR
+
+#### Reglas de seguridad en Firestore (lado servidor)
+- ✅ **firestore.rules** — Creado archivo de reglas de seguridad del servidor:
+  - Admin (`admin@ossa.com`): puede leer y escribir todos los documentos
+  - Alumno: solo puede leer su propio documento (cubre IDs por UID y por email)
+  - Sin autenticar: sin acceso
+  - ⚠️ **Pendiente de desplegar**: ejecutar `firebase deploy --only firestore:rules`
+    (instrucciones completas dentro del propio archivo `firestore.rules`)
+
 ## Semana 4 - Registro de asistencia
 
 ### [Arturo] - Fecha: ___

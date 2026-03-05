@@ -66,10 +66,6 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
-    // ===== CAMBIADO: Quitamos la librería QR rota de alexzh =====
-    // Ahora usamos ZXing
-    implementation("com.google.zxing:core:3.5.3")
-
-    // AÑADIDO: Iconos extendidos (necesario para Icons.Default.QrCode)
+    // Iconos extendidos (necesario para Logout, BarChart, etc. en AdminHomeScreen)
     implementation("androidx.compose.material:material-icons-extended")
 }

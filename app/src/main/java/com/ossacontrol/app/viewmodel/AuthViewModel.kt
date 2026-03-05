@@ -18,24 +18,44 @@ class AuthViewModel : ViewModel() {
     private val _userRole = mutableStateOf<String?>(null)
     val userRole: State<String?> = _userRole
 
-    // Función para mirar en la base de datos qué rol tiene el usuario logueado
-    // Limpieza - Arturo 25/02/2026: añadido log de error si Firestore falla
+    // Función para mirar en la base de datos qué rol tiene el usuario logueado.
+    // Busca primero por UID (alumnos registrados vía SignUpScreen).
+    // Si no encuentra documento, busca por email (alumnos creados por el admin,
+    // cuyo documento usa el email como ID en lugar del UID).
     fun checkUserRole() {
         val userId = auth.currentUser?.uid
-        if (userId != null) {
-            db.collection("users").document(userId).get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val rolEncontrado = document.getString("rol")
-                        _userRole.value = rolEncontrado
-                    } else {
-                        Log.w("AuthViewModel", "No se encontró documento de usuario para UID: $userId")
-                    }
+        val userEmail = auth.currentUser?.email
+        if (userId == null) return
+
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    _userRole.value = document.getString("rol")
+                } else if (userEmail != null) {
+                    // Fallback: el alumno fue creado por el admin y su documento
+                    // tiene el email como ID, no el UID
+                    db.collection("users")
+                        .whereEqualTo("email", userEmail)
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener { query ->
+                            val doc = query.documents.firstOrNull()
+                            if (doc != null) {
+                                _userRole.value = doc.getString("rol")
+                            } else {
+                                Log.w("AuthViewModel", "No se encontró usuario con email: $userEmail")
+                            }
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e("AuthViewModel", "Error buscando por email: ${exception.message}")
+                        }
+                } else {
+                    Log.w("AuthViewModel", "No se encontró documento de usuario para UID: $userId")
                 }
-                .addOnFailureListener { exception ->
-                    Log.e("AuthViewModel", "Error al obtener rol del usuario: ${exception.message}")
-                }
-        }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("AuthViewModel", "Error al obtener rol del usuario: ${exception.message}")
+            }
     }
 
     fun logout() {
