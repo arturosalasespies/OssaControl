@@ -74,9 +74,10 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 - ✅Solución de Errores de Compilación:
 - ✅ Eliminada por completo la librería de QR (alexzh:qrcode-compose) que causaba errores de Gradle y bloqueaba la ejecución de la app.
 - ✅ Limpiados los archivos build.gradle.kts y StudentDetailScreen.kt de cualquier referencia a la librería eliminada para asegurar que el proyecto compile correctamente.
+
 ---
 
-## Sesión extra - Semana 3 (25/02/2026)
+## Semana 3 - Limpieza y mejoras
 
 ### [Arturo] - Fecha: 25/02/2026 (con Claude Code como asistente)
 
@@ -135,7 +136,7 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 
 ---
 
-## Sesión extra – Semana 4 (25/02/2026) – Limpieza y mejoras
+## Semana 4 – Registro de asistencia
 
 ### [Arturo] - Fecha: 25/02/2026 (con Claude Code como asistente)
 
@@ -162,6 +163,15 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 #### Advertencia sobre código legacy
 - ⚠️ **HomeScreen.kt**: Este archivo existe pero NO se usa en el grafo de navegación (`AppRoot.kt`). Es código legacy de la semana 1 (Alejandra 09/02). No se ha eliminado — se informa al equipo para que decidan si borrarlo en una sesión de limpieza.
 
+### [Alejandra] - Fecha: 09/03/2026
+- ✅ R02F01T03: Campo notas. Requisito necesario para que el profesor escriba observaciones sobre cada alumno en su perfil.
+- ✅ User.kt editado con la variable "notas". Por defecto se establece el campo vacío.
+- ✅ StudentDetailScreen modificado con la adición del campo "notas".
+- ✅ Fix de scroll usando LazyColumn.
+- ✅ Historial editado para no tener scrolls dentro de scrolls.
+- ✅ Campo de última asistencia eliminado por redundancia con el historial.
+- ✅ Ajustado espacio agrupando título + contenido para el LazyColumn.
+
 ## Sesión extra – Semana 4 (06/03/2026) – Seguridad y corrección de bug de login
 
 ### [Arturo] - Fecha: 06/03/2026 (con Claude Code como asistente)
@@ -185,17 +195,6 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
   - Sin autenticar: sin acceso
   - ⚠️ **Pendiente de desplegar**: ejecutar `firebase deploy --only firestore:rules`
     (instrucciones completas dentro del propio archivo `firestore.rules`)
-
-## Semana 4 - Registro de asistencia
-
-### [Arturo] - Fecha: ___
--
-
-### [Alejandra] - Fecha: ___
--
-
-### [Alberto] - Fecha: ___
--
 
 ---
 

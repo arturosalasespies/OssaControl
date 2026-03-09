@@ -19,7 +19,13 @@
  *     - Mostrar la última asistencia del alumno con fecha y hora
  *     - Mostrar historial de las últimas 10 asistencias
  *     - Formatear timestamp
- *     - Scroll en asistencia
+ *   - Alejandra (09/03):
+ *     · Añadido campo de "notas" del alumno
+ *     · Fix de scroll usando LazyColumn
+ *     · Historial editado para no tener scrolls dentro de scrolls
+ *     · Campo de última asistencia eliminado por redundancia con el historial
+ *     · Ajustado espacio agrupando título + contenido
+ *
  * ============================================
  */
 package com.ossacontrol.app.ui.screens
@@ -28,6 +34,7 @@ package com.ossacontrol.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,9 +48,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.heightIn
 
 // Imports para Firestore + fecha/hora + modelo asistencia
 import com.google.firebase.firestore.FirebaseFirestore
@@ -107,6 +111,7 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
     // --- Estados locales (borrador del admin) ---
     var cinturon by remember { mutableStateOf(alumno?.cinturon ?: "Blanco") }
     var grados by remember { mutableStateOf(alumno?.grados ?: 0) }
+    var notas by remember { mutableStateOf(alumno?.notas ?: "") }
 
     // Snackbar para mostrar errores de Firebase al usuario
     val snackbarHostState = remember { SnackbarHostState() }
@@ -117,6 +122,7 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
         if (alumno != null) {
             cinturon = alumno.cinturon
             grados = alumno.grados
+            notas = alumno.notas
         }
     }
 
@@ -137,16 +143,12 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(10)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // No spameamos al usuario, pero dejamos log
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
 
-                val lista = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(Asistencia::class.java)
+                val lista = snapshot?.documents?.mapNotNull {
+                    it.toObject(Asistencia::class.java)
                 } ?: emptyList()
 
-                // serverTimestamp puede venir null un instante
                 asistencias = lista.filter { it.timestamp != null }
             }
     }
@@ -164,252 +166,259 @@ fun StudentDetailScreen(studentEmail: String, onBack: () -> Unit) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        if (alumno != null) {
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .padding(24.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // ===== SECCIÓN 1: Información del alumno =====
-                Text(
-                    text = alumno.nombre.uppercase(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    text = alumno.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary
-                )
 
-                Spacer(modifier = Modifier.height(24.dp))
+        if (alumno != null) {
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+
+                // ===== SECCIÓN 1: Información del alumno =====
+
+                item {
+                    Column {
+                        Text(
+                            text = alumno.nombre.uppercase(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = alumno.email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
 
                 // ===== SECCIÓN 2: Barra visual del cinturón =====
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(colorDelCinturon(cinturon))
-                        .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "CINTURÓN ${cinturon.uppercase()} · $grados STRIPES",
-                        color = colorTextoDelCinturon(cinturon),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ===== SECCIÓN 3: Selector de cinturones =====
-                Text(
-                    text = "CAMBIAR CINTURÓN",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    cinturones.forEach { nombreCinturon ->
-                        FilterChip(
-                            selected = cinturon == nombreCinturon,
-                            onClick = {
-                                cinturon = nombreCinturon
-                                grados = 0
-                            },
-                            label = {
-                                Text(
-                                    text = nombreCinturon.take(3).uppercase(),
-                                    color = colorTextoDelCinturon(nombreCinturon),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = colorDelCinturon(nombreCinturon).copy(alpha = 0.3f),
-                                selectedContainerColor = colorDelCinturon(nombreCinturon)
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ===== SECCIÓN 4: Selector de stripes (grados) =====
-                Text(
-                    text = "STRIPES (GRADOS): $grados",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    (0..4).forEach { numGrado ->
-                        FilterChip(
-                            selected = grados == numGrado,
-                            onClick = { grados = numGrado },
-                            label = {
-                                Text(
-                                    "$numGrado",
-                                    fontWeight = if (grados == numGrado) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ===== SECCIÓN 5: Tarjeta de asistencia (total + botón) =====
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(colorDelCinturon(cinturon))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "CLASES REGISTRADAS",
-                            style = MaterialTheme.typography.labelSmall
+                            text = "CINTURÓN ${cinturon.uppercase()} · $grados STRIPES",
+                            color = colorTextoDelCinturon(cinturon),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall
                         )
+                    }
+                }
+
+                // ===== SECCIÓN 3: Selector de cinturones =====
+
+                item {
+                    Column {
                         Text(
-                            text = "${alumno.clasesAsistidas}",
-                            style = MaterialTheme.typography.displayLarge,
+                            text = "CAMBIAR CINTURÓN",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
 
-                        Button(
-                            onClick = {
-                                viewModel.registrarAsistencia(
-                                    alumnoId = alumno.id,
-                                    onSuccess = { /* ok */ },
-                                    onError = { mensaje ->
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Error: $mensaje")
-                                        }
-                                    }
-                                )
-                            },
-                            modifier = Modifier.padding(top = 8.dp),
-                            shape = MaterialTheme.shapes.small
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Text("AÑADIR ASISTENCIA +1")
+                            cinturones.forEach { nombreCinturon ->
+                                FilterChip(
+                                    selected = cinturon == nombreCinturon,
+                                    onClick = {
+                                        cinturon = nombreCinturon
+                                        grados = 0
+                                    },
+                                    label = {
+                                        Text(
+                                            text = nombreCinturon.take(3).uppercase(),
+                                            color = colorTextoDelCinturon(nombreCinturon),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = colorDelCinturon(nombreCinturon).copy(alpha = 0.3f),
+                                        selectedContainerColor = colorDelCinturon(nombreCinturon)
+                                    )
+                                )
+                            }
                         }
                     }
                 }
 
-                // Última asistencia (fecha y hora)
-                Spacer(modifier = Modifier.height(16.dp))
-                val ultimaTs = asistencias.firstOrNull()?.timestamp
-                if (ultimaTs != null) {
-                    Text(
-                        text = "Última asistencia: ${formatTimestamp(ultimaTs)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                } else {
-                    Text(
-                        text = "Última asistencia: (sin registros)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                // ===== SECCIÓN 4: Selector de stripes =====
+
+                item {
+                    Column {
+                        Text(
+                            text = "STRIPES (GRADOS): $grados",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            (0..4).forEach { num ->
+                                FilterChip(
+                                    selected = grados == num,
+                                    onClick = { grados = num },
+                                    label = { Text("$num") }
+                                )
+                            }
+                        }
+                    }
                 }
 
-                // Historial de asistencias (últimas 10)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "HISTORIAL (ÚLTIMAS ${asistencias.size})",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                // ===== SECCIÓN 5: Asistencias =====
 
-                // ===== HISTORIAL DE ASISTENCIAS (SCROLL INTERNO) =====
-                val historyScroll = rememberScrollState()
-
-                if (asistencias.isEmpty()) {
-                    Text(
-                        text = "Aún no hay asistencias registradas.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                } else {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
                         Column(
-                            modifier = Modifier
-                                .heightIn(max = 220.dp)      // Límite visual elegante
-                                .verticalScroll(historyScroll)
-                                .padding(16.dp)
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            asistencias.forEachIndexed { index, a ->
-                                val ts = a.timestamp ?: return@forEachIndexed
+                            Text("CLASES REGISTRADAS")
 
-                                Text(
-                                    text = "• ${formatTimestamp(ts)}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                            Text(
+                                text = "${alumno.clasesAsistidas}",
+                                style = MaterialTheme.typography.displayLarge,
+                                fontWeight = FontWeight.Bold
+                            )
 
-                                if (index < asistencias.lastIndex) {
-                                    Spacer(modifier = Modifier.height(6.dp))
+                            Button(
+                                onClick = {
+                                    viewModel.registrarAsistencia(
+                                        alumno.id,
+                                        {},
+                                        {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(it)
+                                            }
+                                        }
+                                    )
+                                }
+                            ) {
+                                Text("AÑADIR ASISTENCIA +1")
+                            }
+                        }
+                    }
+                }
+
+                // ===== HISTORIAL =====
+
+                item {
+                    Column {
+                        Text(
+                            text = "HISTORIAL",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (asistencias.isEmpty()) {
+                            Text(
+                                text = "Aún no hay asistencias registradas.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        } else {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                asistencias.forEach { asistencia ->
+                                    val ts = asistencia.timestamp ?: return@forEach
+                                    Text("• ${formatTimestamp(ts)}")
                                 }
                             }
                         }
                     }
                 }
 
-                // Empuja el botón de guardar al fondo de la pantalla
-                Spacer(modifier = Modifier.weight(1f))
+                // ===== SECCIÓN 6: NOTAS =====
 
-                // ===== SECCIÓN 6: Botón guardar cambios =====
-                Button(
-                    onClick = {
-                        val alumnoEditado = alumno.copy(
-                            cinturon = cinturon,
-                            grados = grados
+                item {
+                    Column {
+                        Text(
+                            text = "NOTAS DEL ALUMNO",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
                         )
-                        viewModel.actualizarAlumno(
-                            user = alumnoEditado,
-                            onSuccess = { onBack() },
-                            onError = { mensaje ->
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Error al guardar: $mensaje")
-                                }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = notas,
+                            onValueChange = { notas = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp),
+                            placeholder = {
+                                Text("Objetivos, actitud en clase, puntos a mejorar, lesiones…")
                             }
                         )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text("GUARDAR CAMBIOS", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // ===== GUARDAR =====
+
+                item {
+                    Button(
+                        onClick = {
+                            val alumnoEditado = alumno.copy(
+                                cinturon = cinturon,
+                                grados = grados,
+                                notas = notas.trim()
+                            )
+
+                            viewModel.actualizarAlumno(
+                                alumnoEditado,
+                                { onBack() },
+                                {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(it)
+                                    }
+                                }
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Text("GUARDAR CAMBIOS")
+                    }
                 }
             }
+
         } else {
+
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(modifier = Modifier.size(50.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Cargando datos del alumno...", style = MaterialTheme.typography.bodyMedium)
-                }
+                CircularProgressIndicator()
             }
         }
     }

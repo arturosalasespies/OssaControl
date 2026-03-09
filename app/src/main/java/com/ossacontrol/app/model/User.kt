@@ -11,6 +11,7 @@ package com.ossacontrol.app.model
  *   - Arturo  (25/02): Añadido campo fechaInicioCinturon para candidatos a graduación
  *   - Arturo (con Claude Code) (25/02): Añadido campo ultimaAsistencia para
  *     detectar alumnos inactivos (requisito del profesor José Manuel)
+ *   - Alejandra (09/03): Añadido campo de notas para introducir anotaciones sobre cada alumno
  * ============================================
  *
  * Cada campo tiene un valor por defecto ("" o 0) para que Firebase
@@ -21,6 +22,12 @@ package com.ossacontrol.app.model
  *   Los alumnos existentes sin este campo recibirán 0L por defecto,
  *   lo que los marcará como "nunca ha asistido". Es el comportamiento
  *   correcto: sin datos, asumimos inactividad.
+ *
+ * NOTA SOBRE notas:
+ *   Es un campo de texto libre para que el admin/profesor pueda guardar
+ *   observaciones del alumno: objetivos, lesiones, actitud, detalles técnicos, etc.
+ *   Los usuarios antiguos que no tengan este campo recibirán "" por defecto.
+ *
  */
 data class User(
     val id: String = "",
@@ -32,6 +39,7 @@ data class User(
     val clasesAsistidas: Int = 0,          // Contador total de clases
     val fechaInicioCinturon: Long = 0L,    // Milisegundos de cuándo se puso este cinturón
                                            // 0L = no registrada (alumnos antiguos)
-    val ultimaAsistencia: Long = 0L        // Milisegundos de la última clase registrada
+    val ultimaAsistencia: Long = 0L,        // Milisegundos de la última clase registrada
                                            // 0L = nunca ha asistido o dato no registrado
+    val notas: String = ""                 // Notas internas del admin/profesor
 )
