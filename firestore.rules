@@ -57,6 +57,10 @@ service cloud.firestore {
                       || resource.data.email == request.auth.token.email);
 
       // Los alumnos no pueden escribir: solo el admin edita los datos.
+
+      // Un alumno puede crear su propio documento al registrarse
+      allow create: if request.auth != null
+                    && request.auth.uid == docId;
     }
 
     // ==========================================
