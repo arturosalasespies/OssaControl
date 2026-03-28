@@ -200,7 +200,45 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 
 ## Semana 5 - Testing y bugs
 
-### [Arturo] - Fecha: ___
+## Sesión de testing y seguridad – 28/03/2026
+
+### [Arturo] - Fecha: 28/03/2026
+
+#### Reglas de Firestore desplegadas
+- ✅ Instalado Firebase CLI (v15.12.0)
+- ✅ Conectado Firebase CLI con proyecto ossa-control
+- ✅ Desplegadas reglas de seguridad: `firebase deploy --only firestore:rules`
+- ✅ Añadidas reglas para subcolección `asistencias/` (fix PERMISSION_DENIED)
+- ✅ Añadida regla `allow create` para que alumnos puedan registrarse
+
+#### Testing manual completo
+- ✅ Login admin funcionando con nuevas reglas
+- ✅ Registro asistencia +1 funcionando (subcolección asistencias cubierta)
+- ✅ Historial de asistencias visible en StudentDetailScreen
+- ✅ Notas del alumno — guardado y recuperado correctamente
+- ✅ Candidatos a graduación — lógica IBJJF verificada
+- ✅ Alumnos inactivos — detección correcta
+- ✅ Estadísticas — resumen, cinturones y top 5 correctos
+- ✅ Registro de alumno nuevo vía SignUpScreen funcionando
+- ✅ Login alumno — perfil visible correctamente
+
+#### Mejoras futuras identificadas — Sistema de asistencia escalable
+El sistema actual requiere que el admin registre manualmente cada
+asistencia. Para academias de +300 alumnos esto no es viable.
+A comentar con el tutor José Manuel en la defensa.
+
+**Soluciones propuestas:**
+
+1. **QR rotativo** (recomendado)
+    - El profesor genera un QR que cambia cada 5 minutos
+    - El alumno lo escanea al llegar al gimnasio
+    - La app registra automáticamente fecha, hora y alumno
+    - Implementación: ZXing (ya estuvo en el proyecto) + Firestore
+
+2. **Geolocalización**
+    - La app verifica que el alumno está físicamente en el gimnasio
+    - Solo permite registrar asistencia dentro de un radio de 100m
+    - Requiere permiso de ubicación en el dispositivo
 -
 
 ### [Alejandra] - Fecha: ___
