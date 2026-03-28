@@ -239,7 +239,8 @@ A comentar con el tutor José Manuel en la defensa.
     - La app verifica que el alumno está físicamente en el gimnasio
     - Solo permite registrar asistencia dentro de un radio de 100m
     - Requiere permiso de ubicación en el dispositivo
--
+-#### Limpieza de código legacy
+- ✅ **HomeScreen.kt** eliminado — archivo de la semana 1 sin usar en navegación
 
 ### [Alejandra] - Fecha: ___
 -
