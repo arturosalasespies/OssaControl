@@ -22,25 +22,69 @@ rules_version = '2';
 //   El email del admin está hardcodeado igual que en SignUpScreen.kt.
 //   Si en el futuro hay más admins, la solución correcta es usar
 //   Firebase Custom Claims (requiere Cloud Functions / Admin SDK).
+//
+// ESTRUCTURA DE LA BASE DE DATOS:
+//   users/                        ← colección principal
+//     {docId}/                    ← documento de cada usuario
+//       asistencias/              ← subcolección de registros de clase
+//         {asistenciaId}/         ← cada vez que el alumno vino
+//
+// IMPORTANTE: Las reglas NO se heredan automáticamente.
+//   Si defines reglas para /users/{docId} pero NO defines reglas
+//   para /users/{docId}/asistencias/{id}, la subcolección queda
+//   BLOQUEADA por defecto. Por eso necesitamos el segundo bloque.
 // ============================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ==========================================
+    // BLOQUE 1: Colección principal de usuarios
+    // ==========================================
     match /users/{docId} {
 
-      // El admin puede leer y escribir cualquier documento
+      // El admin puede leer y escribir cualquier documento de usuario.
+      // request.auth.token.email comprueba el email del usuario logueado.
       allow read, write: if request.auth != null
                          && request.auth.token.email == 'admin@ossa.com';
 
       // Un alumno puede leer únicamente su propio documento.
       // Cubre los dos casos de ID:
-      //   · docId == UID  (registro vía SignUpScreen)
-      //   · resource.data.email == email del token (creado por el admin)
+      //   · docId == UID  (alumno registrado vía SignUpScreen)
+      //   · resource.data.email == email del token (alumno creado por el admin)
       allow read: if request.auth != null
                   && (request.auth.uid == docId
                       || resource.data.email == request.auth.token.email);
 
-      // Los alumnos no pueden escribir: solo el admin edita los datos
+      // Los alumnos no pueden escribir: solo el admin edita los datos.
     }
+
+    // ==========================================
+    // BLOQUE 2: Subcolección de asistencias
+    // Ruta: users/{docId}/asistencias/{asistenciaId}
+    //
+    // SIN este bloque el error es: PERMISSION_DENIED
+    // porque las reglas del padre NO se heredan.
+    // ==========================================
+    match /users/{docId}/asistencias/{asistenciaId} {
+
+      // El admin puede leer y escribir cualquier asistencia.
+      // Es quien pulsa +1 en StudentDetailScreen.
+      allow read, write: if request.auth != null
+                         && request.auth.token.email == 'admin@ossa.com';
+
+      // El alumno puede leer sus propias asistencias.
+      // Necesitamos buscar el documento padre para saber el email
+      // del alumno, porque la asistencia no tiene ese dato directamente.
+      // get() hace una consulta al documento padre en Firestore.
+      allow read: if request.auth != null
+                  && (request.auth.uid == docId
+                      || get(/databases/$(database)/documents/users/$(docId)).data.email
+                         == request.auth.token.email);
+
+      // Los alumnos no pueden crear ni modificar asistencias.
+      // Solo el admin registra clases.
+    }
+
   }
 }
