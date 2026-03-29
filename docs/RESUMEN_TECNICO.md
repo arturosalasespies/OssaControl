@@ -315,4 +315,4 @@ Definidas en `app/build.gradle.kts` y `gradle/libs.versions.toml`:
 
 ---
 
-*Documento generado por Arturo (con Claude Code) — 25/02/2026*
+*Documento generado por Arturo  — 25/02/2026*

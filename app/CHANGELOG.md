@@ -79,7 +79,7 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 
 ## Semana 3 - Limpieza y mejoras
 
-### [Arturo] - Fecha: 25/02/2026 (con Claude Code como asistente)
+### [Arturo] - Fecha: 25/02/2026 
 
 #### Corrección de bugs críticos
 - ✅ **Bug de IDs en Firestore corregido**: Los documentos se creaban con UID (SignUpScreen) o con email (AdminViewModel) como ID. Todas las operaciones de escritura fallaban silenciosamente porque intentaban acceder al documento por email, aunque algunos tenían UID como ID.
@@ -138,7 +138,7 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 
 ## Semana 4 – Registro de asistencia
 
-### [Arturo] - Fecha: 25/02/2026 (con Claude Code como asistente)
+### [Arturo] - Fecha: 25/02/2026
 
 #### Limpieza general de código (todos los .kt)
 - ✅ **AuthViewModel.kt**: Añadido `addOnFailureListener` en `checkUserRole()` — ya no falla silenciosamente si Firestore da error
@@ -174,7 +174,7 @@ Registro de cambios del proyecto. Cada integrante documenta aquí lo que va haci
 
 ## Sesión extra – Semana 4 (06/03/2026) – Seguridad y corrección de bug de login
 
-### [Arturo] - Fecha: 06/03/2026 (con Claude Code como asistente)
+### [Arturo] - Fecha: 06/03/2026 
 
 #### Corrección de bug: checkUserRole() fallaba para alumnos creados por el admin
 - ✅ **AuthViewModel.kt** — `checkUserRole()` reescrito con estrategia de doble búsqueda:
