@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Sensitive local files (do not publish)
+app/google-services.json
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+.env
+.env.*
